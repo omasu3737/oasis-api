@@ -93,6 +93,7 @@ export default function AIChatScreen({ onBack }) {
           max_tokens: 1000,
           system: SYSTEM_PROMPT,
           messages: newMessages.map(m => ({ role: m.role, content: m.content })),
+          userId: (await supabase.auth.getUser())?.data?.user?.id,
         }),
       });
       const data = await res.json();
