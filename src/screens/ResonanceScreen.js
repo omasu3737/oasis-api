@@ -10,18 +10,19 @@ import { C, ELEMENT_COLORS } from '../theme';
 
 const FILTERS = ['全員', '友人', '恋愛', '仕事'];
 
-function UserCard({ user, personaData }) {
+function UserCard({ user, personaData, profile }) {
   const elementInfo = personaData?.element_type ? ELEMENT_COLORS[personaData.element_type] : null;
+  const displayName = profile?.display_name || user.email?.split('@')[0] || 'ユーザー';
 
   return (
     <TouchableOpacity style={s.userCard}>
       <View style={s.userIcon}>
         <Text style={{ fontSize: 18, color: C.p, fontWeight: '500' }}>
-          {user.email?.[0]?.toUpperCase() || '?'}
+          {displayName[0]?.toUpperCase() || '?'}
         </Text>
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={s.userName}>{user.email?.split('@')[0] || 'ユーザー'}</Text>
+        <Text style={s.userName}>{displayName}</Text>
         {personaData ? (
           <Text style={s.userType}>{personaData.persona_type}</Text>
         ) : (
@@ -83,18 +84,30 @@ export default function ResonanceScreen() {
         return;
       }
 
+      // プロフィール（display_name）を取得
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, display_name')
+        .in('id', userIds);
+
       const personaMap = {};
       personas.forEach(p => { personaMap[p.user_id] = p; });
+
+      const profileMap = {};
+      (profiles || []).forEach(p => { profileMap[p.id] = p; });
 
       let result = userData.map(u => ({
         user: u,
         personaData: personaMap[u.id] || null,
+        profile: profileMap[u.id] || null,
       }));
 
       if (query.trim()) {
-        result = result.filter(r =>
-          r.user.email?.toLowerCase().includes(query.toLowerCase())
-        );
+        const q = query.toLowerCase();
+        result = result.filter(r => {
+          const name = r.profile?.display_name || r.user.email || '';
+          return name.toLowerCase().includes(q);
+        });
       }
 
       setUsers(result);
@@ -150,7 +163,7 @@ export default function ResonanceScreen() {
         ) : users.length > 0 ? (
           <View style={{ paddingTop: 8 }}>
             {users.map((item, i) => (
-              <UserCard key={i} user={item.user} personaData={item.personaData} />
+              <UserCard key={i} user={item.user} personaData={item.personaData} profile={item.profile} />
             ))}
           </View>
         ) : (
