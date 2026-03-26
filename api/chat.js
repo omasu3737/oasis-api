@@ -295,6 +295,129 @@ ${conversationText}
   };
 }
 
+// --- Deep Personality Analysis (会話30回以上で実行) ---
+
+async function analyzeDeepPersonality(userId, conversationCount) {
+  if (conversationCount < 30) return null;
+
+  // 過去の要約 + 直近の会話を取得
+  const { data: summaries } = await supabase
+    .from('conversation_summaries')
+    .select('summary')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true });
+
+  const { data: recentMsgs } = await supabase
+    .from('ai_messages')
+    .select('role, content')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(60);
+
+  if (!recentMsgs || recentMsgs.length < 20) return null;
+
+  const summaryText = summaries?.length > 0
+    ? '【過去の会話要約】\n' + summaries.map(s => s.summary).join('\n---\n') + '\n\n'
+    : '';
+
+  const recentText = [...recentMsgs].reverse()
+    .map(m => `${m.role === 'user' ? 'ユーザー' : 'AI'}: ${m.content}`)
+    .join('\n');
+
+  const ctx = summaryText + '【最近の会話】\n' + recentText;
+
+  const parseJSON = (text) => {
+    try {
+      return JSON.parse(text.replace(/```json|```/g, '').trim());
+    } catch {
+      return null;
+    }
+  };
+
+  // 1回目: 相性 + 価値観優先順位
+  const deep1 = await callGemini(
+    'あなたは心理分析の専門家です。必ずJSON形式のみで返答してください。',
+    `以下の会話データからこの人の「相性がいい人の特徴」と「価値観の優先順位」を分析してください。
+
+会話データ：
+${ctx}
+
+以下のJSON形式のみで返答：
+{
+  "compatibility": "この人と相性がいい人の特徴を3-4文で具体的に記述",
+  "values_priority": {
+    "order": "最重要な価値観 › 2番目 › 3番目 › 4番目 › 5番目（自由,意味,安定,承認,貢献,成長,愛情,独立から選択）",
+    "description": "この優先順位になる理由を2文で",
+    "tags": ["特徴タグ1", "特徴タグ2", "特徴タグ3"]
+  }
+}`
+  );
+
+  await delay(3000);
+
+  // 2回目: 愛着スタイル + ストレス反応
+  const deep2 = await callGemini(
+    'あなたは心理分析の専門家です。必ずJSON形式のみで返答してください。',
+    `以下の会話データからこの人の「愛着スタイル」と「ストレス反応パターン」を分析してください。
+
+会話データ：
+${ctx}
+
+以下のJSON形式のみで返答：
+{
+  "attachment": {
+    "type": "安定型/不安型/回避型/回避・不安混合型 のいずれか",
+    "description": "この人の対人関係の特徴を2文で",
+    "tags": ["特徴タグ1", "特徴タグ2", "特徴タグ3"]
+  },
+  "stress": {
+    "pattern": "ストレス時の行動パターンを矢印で表現（例：回避→内省→再構築）",
+    "description": "ストレス反応の特徴を2文で",
+    "tags": ["特徴タグ1", "特徴タグ2", "特徴タグ3"]
+  }
+}`
+  );
+
+  await delay(3000);
+
+  // 3回目: エネルギー源泉 + 思考スタイル
+  const deep3 = await callGemini(
+    'あなたは心理分析の専門家です。必ずJSON形式のみで返答してください。',
+    `以下の会話データからこの人の「エネルギーの源泉」と「思考スタイル」を分析してください。
+
+会話データ：
+${ctx}
+
+以下のJSON形式のみで返答：
+{
+  "energy": {
+    "recharge": "エネルギーが充電される活動・状況を具体的に",
+    "drain": "エネルギーが消耗する活動・状況を具体的に"
+  },
+  "thinking": {
+    "pattern": "思考の流れを矢印で表現（例：大局→直感→構造化）",
+    "description": "思考スタイルの特徴を2文で",
+    "tags": ["特徴タグ1", "特徴タグ2", "特徴タグ3"]
+  }
+}`
+  );
+
+  const d1 = parseJSON(deep1);
+  const d2 = parseJSON(deep2);
+  const d3 = parseJSON(deep3);
+
+  if (!d1 && !d2 && !d3) return null;
+
+  return {
+    compatibility_text: d1?.compatibility || null,
+    values_priority: d1?.values_priority || null,
+    attachment_style: d2?.attachment || null,
+    stress_response: d2?.stress || null,
+    energy_source: d3?.energy || null,
+    thinking_style: d3?.thinking || null,
+  };
+}
+
 // --- Main Handler ---
 
 export default async function handler(req, res) {
@@ -386,6 +509,20 @@ export default async function handler(req, res) {
                   conversation_count: count,
                   updated_at: new Date().toISOString(),
                 }, { onConflict: 'user_id' });
+            }
+
+            // Deep analysis at 30, 60, 90... messages
+            if (count >= 30 && count % 30 === 0) {
+              const deepResult = await analyzeDeepPersonality(userId, count);
+              if (deepResult) {
+                await supabase
+                  .from('persona_data')
+                  .update({
+                    ...deepResult,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq('user_id', userId);
+              }
             }
           }
 
