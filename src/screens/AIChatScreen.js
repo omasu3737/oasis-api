@@ -1,3 +1,4 @@
+import { useNavigation } from '@react-navigation/native';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
@@ -9,7 +10,8 @@ import { getCurrentUser } from '../services/auth';
 import { loadMessages, saveMessage, sendToAI } from '../services/messages';
 import { C } from '../theme';
 
-export default function AIChatScreen({ onBack }) {
+export default function AIChatScreen() {
+  const navigation = useNavigation();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [typing, setTyping] = useState(false);
@@ -65,7 +67,7 @@ export default function AIChatScreen({ onBack }) {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
       <View style={s.nav}>
-        <TouchableOpacity style={s.backBtn} onPress={onBack}>
+        <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()}>
           <Text style={s.backTxt}>‹</Text>
         </TouchableOpacity>
         <View style={s.aiOrb}>

@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
-import { BackHandler, StatusBar, Text, View } from 'react-native';
+import { StatusBar, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AppNavigator from './src/navigation/AppNavigator';
-import AIChatScreen from './src/screens/AIChatScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import { getSession, onAuthStateChange } from './src/services/auth';
 import { C } from './src/theme';
@@ -10,7 +9,6 @@ import { C } from './src/theme';
 export default function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showAIChat, setShowAIChat] = useState(false);
 
   useEffect(() => {
     getSession().then(s => {
@@ -21,17 +19,6 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Android物理バックボタン対応
-  useEffect(() => {
-    if (!showAIChat) return;
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      setShowAIChat(false);
-      return true;
-    });
-    return () => backHandler.remove();
-  }, [showAIChat]);
-
-  // 読み込み中
   if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: C.bg }}>
@@ -40,17 +27,12 @@ export default function App() {
     );
   }
 
-  // 未ログイン
   if (!session) return <LoginScreen />;
 
-  // AIチャット画面
-  if (showAIChat) return <AIChatScreen onBack={() => setShowAIChat(false)} />;
-
-  // メイン画面（タブナビゲーション）
   return (
     <SafeAreaProvider>
       <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
-      <AppNavigator onOpenAIChat={() => setShowAIChat(true)} />
+      <AppNavigator />
     </SafeAreaProvider>
   );
 }

@@ -1,7 +1,9 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigationContainer } from '@react-navigation/native';
 import { Text, View } from 'react-native';
 import Svg, { Circle, Line, Path } from 'react-native-svg';
+import AIChatScreen from '../screens/AIChatScreen';
 import MeScreen from '../screens/MeScreen';
 import ResonanceScreen from '../screens/ResonanceScreen';
 import TalkScreen from '../screens/TalkScreen';
@@ -54,41 +56,54 @@ function TabIcon({ focused, SvgIcon, label }) {
 }
 
 const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
 
-export default function AppNavigator({ onOpenAIChat }) {
+function TabNavigator() {
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: {
+          backgroundColor: C.bg,
+          borderTopColor: C.bd,
+          borderTopWidth: 1,
+          height: 60,
+          paddingBottom: 0,
+          paddingTop: 8,
+        },
+        tabBarShowLabel: false,
+      }}
+    >
+      <Tab.Screen
+        name="わたし"
+        component={MeScreen}
+        options={{ tabBarIcon: ({ focused }) => <TabIcon focused={focused} SvgIcon={IconMe} label="わたし" /> }}
+      />
+      <Tab.Screen
+        name="トーク"
+        component={TalkScreen}
+        options={{ tabBarIcon: ({ focused }) => <TabIcon focused={focused} SvgIcon={IconTalk} label="トーク" /> }}
+      />
+      <Tab.Screen
+        name="共鳴"
+        component={ResonanceScreen}
+        options={{ tabBarIcon: ({ focused }) => <TabIcon focused={focused} SvgIcon={IconDisc} label="共鳴" /> }}
+      />
+    </Tab.Navigator>
+  );
+}
+
+export default function AppNavigator() {
   return (
     <NavigationContainer>
-      <Tab.Navigator
-        screenOptions={{
-          headerShown: false,
-          tabBarStyle: {
-            backgroundColor: C.bg,
-            borderTopColor: C.bd,
-            borderTopWidth: 1,
-            height: 60,
-            paddingBottom: 0,
-            paddingTop: 8,
-          },
-          tabBarShowLabel: false,
-        }}
-      >
-        <Tab.Screen
-          name="わたし"
-          component={MeScreen}
-          options={{ tabBarIcon: ({ focused }) => <TabIcon focused={focused} SvgIcon={IconMe} label="わたし" /> }}
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Main" component={TabNavigator} />
+        <Stack.Screen
+          name="AIChat"
+          component={AIChatScreen}
+          options={{ animation: 'slide_from_right' }}
         />
-        <Tab.Screen
-          name="トーク"
-          options={{ tabBarIcon: ({ focused }) => <TabIcon focused={focused} SvgIcon={IconTalk} label="トーク" /> }}
-        >
-          {() => <TalkScreen onOpenAIChat={onOpenAIChat} />}
-        </Tab.Screen>
-        <Tab.Screen
-          name="共鳴"
-          component={ResonanceScreen}
-          options={{ tabBarIcon: ({ focused }) => <TabIcon focused={focused} SvgIcon={IconDisc} label="共鳴" /> }}
-        />
-      </Tab.Navigator>
+      </Stack.Navigator>
     </NavigationContainer>
   );
 }

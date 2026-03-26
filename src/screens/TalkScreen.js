@@ -1,8 +1,11 @@
+import { useNavigation } from '@react-navigation/native';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { C } from '../theme';
 
-export default function TalkScreen({ onOpenAIChat }) {
+export default function TalkScreen() {
+  const navigation = useNavigation();
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
 
@@ -17,7 +20,7 @@ export default function TalkScreen({ onOpenAIChat }) {
 
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
 
-        <TouchableOpacity style={s.aiCard} onPress={() => onOpenAIChat && onOpenAIChat()}>
+        <TouchableOpacity style={s.aiCard} onPress={() => navigation.navigate('AIChat')}>
           <View style={s.aiOrb}>
             <Text style={{ fontSize: 22 }}>✦</Text>
           </View>
