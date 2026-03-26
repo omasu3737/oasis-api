@@ -6,42 +6,59 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
-async function callGemini(systemPrompt, userPrompt) {
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: systemPrompt }] },
-        contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-        generationConfig: { maxOutputTokens: 1000 },
-      }),
-    }
-  );
-  const data = await response.json();
-  return data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-}
+const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
-// --- STEP4: RAG Memory Functions ---
-
-async function generateEmbedding(text) {
-  try {
+async function callGemini(systemPrompt, userPrompt, retries = 2) {
+  for (let i = 0; i <= retries; i++) {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${process.env.GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          content: { parts: [{ text }] },
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+          generationConfig: { maxOutputTokens: 1000 },
         }),
       }
     );
+    if (response.status === 429 || response.status === 503) {
+      if (i < retries) { await delay(3000 * (i + 1)); continue; }
+      return '';
+    }
     const data = await response.json();
-    return data?.embedding?.values || null;
-  } catch {
-    return null;
+    return data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
   }
+  return '';
+}
+
+// --- STEP4: RAG Memory Functions ---
+
+async function generateEmbedding(text, retries = 2) {
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${process.env.GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            content: { parts: [{ text }] },
+          }),
+        }
+      );
+      if (response.status === 429 || response.status === 503) {
+        if (i < retries) { await delay(3000 * (i + 1)); continue; }
+        return null;
+      }
+      const data = await response.json();
+      return data?.embedding?.values || null;
+    } catch {
+      if (i < retries) { await delay(2000); continue; }
+      return null;
+    }
+  }
+  return null;
 }
 
 async function retrieveMemories(userId, queryText, limit = 5) {
@@ -144,6 +161,7 @@ async function analyzePersonality(userId) {
 
   const conversationText = summaryText + '【最近の会話】\n' + recentText;
 
+  // レート制限回避: 各呼び出しの間に3秒の間隔
   const result1 = await callGemini(
     `あなたは人格分析の専門家です。必ずJSON形式のみで返答してください。説明文は一切不要です。`,
     `以下の会話データを分析して0-100のスコアで評価してください。
@@ -159,6 +177,8 @@ ${conversationText}
 {"depth": 数値, "will": 数値, "action": 数値}`
   );
 
+  await delay(3000);
+
   const result2 = await callGemini(
     `あなたは人格分析の専門家です。必ずJSON形式のみで返答してください。説明文は一切不要です。`,
     `以下の会話データを分析して0-100のスコアで評価してください。
@@ -172,6 +192,8 @@ ${conversationText}
 以下のJSON形式のみで返答：
 {"resonance": 数値, "stability": 数値}`
   );
+
+  await delay(3000);
 
   const result3 = await callGemini(
     `あなたは人格分析の専門家です。必ずJSON形式のみで返答してください。説明文は一切不要です。`,
@@ -306,30 +328,39 @@ export default async function handler(req, res) {
   }));
 
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: {
-            parts: [{
-              text: (system || '') + memoryContext + '\n\n重要：マークダウン記号（**、*、#など）は絶対に使わないこと。プレーンテキストのみで回答すること。簡潔に3文以内で答えること。'
-            }]
-          },
-          contents: geminiMessages,
-          generationConfig: { maxOutputTokens: 1000 },
-        }),
+    // メインチャット応答（429リトライ付き）
+    let text = '';
+    for (let attempt = 0; attempt <= 2; attempt++) {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            system_instruction: {
+              parts: [{
+                text: (system || '') + memoryContext + '\n\n重要：マークダウン記号（**、*、#など）は絶対に使わないこと。プレーンテキストのみで回答すること。簡潔に3文以内で答えること。'
+              }]
+            },
+            contents: geminiMessages,
+            generationConfig: { maxOutputTokens: 1000 },
+          }),
+        }
+      );
+
+      if (response.status === 429 || response.status === 503) {
+        if (attempt < 2) { await delay(3000 * (attempt + 1)); continue; }
+        throw new Error(`Gemini API error: ${response.status}`);
       }
-    );
+      if (!response.ok) {
+        throw new Error(`Gemini API error: ${response.status}`);
+      }
 
-    if (!response.ok) {
-      throw new Error(`Gemini API error: ${response.status}`);
+      const data = await response.json();
+      text = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'もう一度試してください';
+      text = text.replace(/\*\*/g, '').replace(/\*/g, '').replace(/#{1,6}\s/g, '').trim();
+      break;
     }
-
-    const data = await response.json();
-    let text = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'もう一度試してください';
-    text = text.replace(/\*\*/g, '').replace(/\*/g, '').replace(/#{1,6}\s/g, '').trim();
 
     // Background tasks: summary creation + personality analysis
     // waitUntilでVercelにバックグラウンド処理の完了を待たせる
