@@ -4,7 +4,6 @@ import {
   StyleSheet, Text, TextInput, TouchableOpacity, View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import EmptyCard from '../components/EmptyCard';
 import RadarChart from '../components/RadarChart';
 import TraitBar from '../components/TraitBar';
 import UserIcon from '../components/UserIcon';
@@ -24,6 +23,24 @@ function SLabel({ text, sub }) {
 
 function Divider() {
   return <View style={s.divider} />;
+}
+
+// 未解放カード（ぼかし + コンパクト）
+function LockedCard({ icon, label, hint }) {
+  return (
+    <View style={s.lockedCard}>
+      <View style={s.lockedBlur}>
+        <Text style={s.lockedIcon}>{icon}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={s.lockedLabel}>{label}</Text>
+          <Text style={s.lockedHint}>{hint}</Text>
+        </View>
+        <View style={s.lockIcon}>
+          <Text style={{ fontSize: 12 }}>🔒</Text>
+        </View>
+      </View>
+    </View>
+  );
 }
 
 // 深層分析カード
@@ -333,8 +350,7 @@ export default function MeScreen() {
         {personaData ? (
           <RadarChart scores={personaData} />
         ) : (
-          <EmptyCard icon="🔮" title="まだ分析できていません"
-            sub={`AIと10回会話すると\nあなたの人格レーダーが表示されます`} />
+          <LockedCard icon="🔮" label="人格レーダー" hint="AIと10回会話すると解放" />
         )}
 
         {/* 特性スコア */}
@@ -352,8 +368,7 @@ export default function MeScreen() {
             ))}
           </View>
         ) : (
-          <EmptyCard icon="📊" title="まだ分析できていません"
-            sub={`AIと話すと5つの特性スコアが\n自動的に計算されます`} />
+          <LockedCard icon="📊" label="特性スコア" hint="AIと10回会話すると解放" />
         )}
 
         <Divider />
@@ -383,7 +398,7 @@ export default function MeScreen() {
             <Text style={s.compatText}>{personaData.compatibility_text}</Text>
           </View>
         ) : (
-          <EmptyCard icon="🤝" sub={`会話を重ねると\nAIが相性分析を行います`} />
+          <LockedCard icon="🤝" label="相性分析" hint="30回会話すると解放" />
         )}
 
         {/* 価値観の優先順位 */}
@@ -406,7 +421,7 @@ export default function MeScreen() {
             <Text style={s.analysisSub}>{personaData.values_profile.worldview}</Text>
           </View>
         ) : (
-          <EmptyCard icon="⚖️" sub={`AIとの会話から\nあなたの価値観が分析されます`} />
+          <LockedCard icon="⚖️" label="価値観の優先順位" hint="30回会話すると解放" />
         )}
 
         {/* 愛着スタイル */}
@@ -418,7 +433,7 @@ export default function MeScreen() {
             tags={personaData.attachment_style.tags || []}
           />
         ) : (
-          <EmptyCard icon="💕" sub={`会話データが蓄積されると\n愛着スタイルが分析されます`} />
+          <LockedCard icon="💕" label="愛着スタイル" hint="30回会話すると解放" />
         )}
 
         {/* ストレス反応 */}
@@ -430,7 +445,7 @@ export default function MeScreen() {
             tags={personaData.stress_response.tags || []}
           />
         ) : (
-          <EmptyCard icon="⚡" sub={`会話データが蓄積されると\nストレス反応パターンが分析されます`} />
+          <LockedCard icon="⚡" label="ストレス反応" hint="30回会話すると解放" />
         )}
 
         {/* エネルギー源泉 */}
@@ -443,7 +458,7 @@ export default function MeScreen() {
             <Text style={s.analysisSub}>{personaData.energy_source.drain || ''}</Text>
           </View>
         ) : (
-          <EmptyCard icon="🔋" sub={`会話データが蓄積されると\nエネルギーの源泉が分析されます`} />
+          <LockedCard icon="🔋" label="エネルギーの源泉" hint="30回会話すると解放" />
         )}
 
         {/* 思考スタイル */}
@@ -455,7 +470,7 @@ export default function MeScreen() {
             tags={personaData.thinking_style.tags || []}
           />
         ) : (
-          <EmptyCard icon="🧠" sub={`会話データが蓄積されると\n思考スタイルが分析されます`} />
+          <LockedCard icon="🧠" label="思考スタイル" hint="30回会話すると解放" />
         )}
 
         <Divider />
@@ -470,7 +485,7 @@ export default function MeScreen() {
             <Text style={s.analysisSub}>{personaData.style_profile.sentence_length}</Text>
           </View>
         ) : (
-          <EmptyCard icon="✍️" sub={`AIとの会話から\nあなたの話し方が分析されます`} />
+          <LockedCard icon="✍️" label="文体プロファイル" hint="AIと10回会話すると解放" />
         )}
 
         <Divider />
@@ -519,6 +534,18 @@ const s = StyleSheet.create({
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 5 },
   tag: { backgroundColor: '#fff', borderWidth: 1, borderColor: C.bm, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 3 },
   tagTxt: { fontSize: 10, color: C.p },
+  // ロックカード
+  lockedCard: { marginHorizontal: 24, marginBottom: 8, borderRadius: 14, overflow: 'hidden' },
+  lockedBlur: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: 14, paddingVertical: 10,
+    backgroundColor: C.bs, borderWidth: 1, borderColor: C.bm,
+    borderRadius: 14, opacity: 0.7,
+  },
+  lockedIcon: { fontSize: 18 },
+  lockedLabel: { fontSize: 12, fontWeight: '500', color: C.tm },
+  lockedHint: { fontSize: 10, color: C.bm, marginTop: 1 },
+  lockIcon: { opacity: 0.5 },
   // 相性カード
   compatCard: { marginHorizontal: 24, marginBottom: 12, borderRadius: 16, padding: 14, backgroundColor: '#f5f0ff', borderWidth: 1, borderColor: C.pm },
   compatText: { fontSize: 12, color: C.t1, lineHeight: 20 },

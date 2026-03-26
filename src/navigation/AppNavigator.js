@@ -4,6 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { Text, View } from 'react-native';
 import Svg, { Circle, Line, Path } from 'react-native-svg';
 import AIChatScreen from '../screens/AIChatScreen';
+import AskAIScreen from '../screens/AskAIScreen';
 import DMScreen from '../screens/DMScreen';
 import MeScreen from '../screens/MeScreen';
 import ResonanceScreen from '../screens/ResonanceScreen';
@@ -113,6 +114,11 @@ export default function AppNavigator() {
         <Stack.Screen
           name="UserProfile"
           component={UserProfileScreen}
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="AskAI"
+          component={AskAIScreen}
           options={{ animation: 'slide_from_right' }}
         />
       </Stack.Navigator>
