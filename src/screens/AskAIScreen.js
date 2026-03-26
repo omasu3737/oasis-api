@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import UserIcon from '../components/UserIcon';
 import { C, ELEMENT_COLORS } from '../theme';
 
-const API_URL = 'https://oasis-api-five.vercel.app/api/ask';
+const API_URL = 'https://oasis-api-nine.vercel.app/api/ask';
 
 export default function AskAIScreen() {
   const navigation = useNavigation();
