@@ -1,3 +1,4 @@
+import { waitUntil } from '@vercel/functions';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -331,8 +332,9 @@ export default async function handler(req, res) {
     text = text.replace(/\*\*/g, '').replace(/\*/g, '').replace(/#{1,6}\s/g, '').trim();
 
     // Background tasks: summary creation + personality analysis
+    // waitUntilでVercelにバックグラウンド処理の完了を待たせる
     if (userId) {
-      (async () => {
+      waitUntil((async () => {
         try {
           // Count user messages in DB for personality trigger
           const { count } = await supabase
@@ -361,7 +363,7 @@ export default async function handler(req, res) {
         } catch (err) {
           console.error('background task error:', err);
         }
-      })();
+      })());
     }
 
     res.status(200).json({ content: [{ text }] });
