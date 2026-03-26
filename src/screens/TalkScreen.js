@@ -1,12 +1,6 @@
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
-} from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { C } from './theme';
+import { C } from '../theme';
 
 export default function TalkScreen({ onOpenAIChat }) {
   return (
@@ -71,18 +65,13 @@ const s = StyleSheet.create({
   },
   aiName: { fontSize: 15, fontWeight: '500', color: C.t1 },
   aiSub: { fontSize: 11, color: C.tm, marginTop: 2 },
-  aiBadge: {
-    paddingHorizontal: 9, paddingVertical: 4, borderRadius: 10,
-    backgroundColor: C.p,
-  },
+  aiBadge: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 10, backgroundColor: C.p },
   aiBadgeTxt: { fontSize: 10, color: '#fff' },
   sectionSep: {
     paddingHorizontal: 24, paddingVertical: 6,
     fontSize: 10, color: C.tm, textTransform: 'uppercase', letterSpacing: 1,
   },
-  emptyArea: {
-    paddingVertical: 32, paddingHorizontal: 24, alignItems: 'center',
-  },
+  emptyArea: { paddingVertical: 32, paddingHorizontal: 24, alignItems: 'center' },
   emptyTitle: { fontSize: 13, fontWeight: '500', color: C.t2, marginBottom: 4 },
   emptySub: { fontSize: 11, color: C.tm, lineHeight: 18, textAlign: 'center' },
 });

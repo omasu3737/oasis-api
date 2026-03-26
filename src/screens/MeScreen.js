@@ -1,39 +1,17 @@
 import { useEffect, useState } from 'react';
 import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+  Alert, KeyboardAvoidingView, Modal, Platform, ScrollView,
+  StyleSheet, Text, TextInput, TouchableOpacity, View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Defs, Line, LinearGradient, Path, Polygon, Stop } from 'react-native-svg';
-import { supabase } from './supabase';
-import { C, ELEMENT_COLORS } from './theme';
-
-function UserIcon({ name = 'ユ', size = 72 }) {
-  return (
-    <View style={{
-      width: size, height: size, borderRadius: size / 2,
-      backgroundColor: C.pp, borderWidth: 2, borderColor: C.bm,
-      alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-    }}>
-      <Text style={{ fontSize: size * 0.32, color: C.p, fontWeight: '500' }}>
-        {name?.[0] || '?'}
-      </Text>
-    </View>
-  );
-}
-
-function EmptyCard({ icon, title, sub }) {
-  return (
-    <View style={s.emptyCard}>
-      <Text style={s.emptyIcon}>{icon}</Text>
-      {title && <Text style={s.emptyTitle}>{title}</Text>}
-      <Text style={s.emptySub}>{sub}</Text>
-    </View>
-  );
-}
+import EmptyCard from '../components/EmptyCard';
+import RadarChart from '../components/RadarChart';
+import TraitBar from '../components/TraitBar';
+import UserIcon from '../components/UserIcon';
+import { getCurrentUser, signOut } from '../services/auth';
+import { getConversationCount, loadPersona } from '../services/persona';
+import { loadProfile, saveProfile } from '../services/profile';
+import { C, ELEMENT_COLORS } from '../theme';
 
 function SLabel({ text }) {
   return <Text style={s.slabel}>{text}</Text>;
@@ -43,130 +21,140 @@ function Divider() {
   return <View style={s.divider} />;
 }
 
-// 5軸レーダーチャート（五角形）
-function RadarChart({ scores }) {
-  const cx = 100, cy = 95, r = 75;
-  const axes = 5;
-  const angleOffset = -Math.PI / 2;
-  const keys = ['depth', 'will', 'action', 'resonance', 'stability'];
-  const labels = ['深さ', '意思', '行動', '共鳴', '安定'];
+function ProfileEditModal({ visible, onClose, currentName, currentBio, onSave }) {
+  const [name, setName] = useState(currentName);
+  const [bio, setBio] = useState(currentBio);
+  const [saving, setSaving] = useState(false);
 
-  const getPoint = (index, ratio) => {
-    const angle = angleOffset + (2 * Math.PI * index) / axes;
-    return {
-      x: cx + Math.cos(angle) * r * ratio,
-      y: cy + Math.sin(angle) * r * ratio,
-    };
-  };
+  useEffect(() => {
+    if (visible) { setName(currentName); setBio(currentBio); }
+  }, [visible]);
 
-  const gridLevels = [0.25, 0.5, 0.75, 1.0];
-
-  const dataPoints = keys.map((k, i) => {
-    const ratio = (scores[k] || 0) / 100;
-    return getPoint(i, ratio);
-  });
-  const dataPts = dataPoints.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-
-  const gridPolygons = gridLevels.map(level => {
-    const pts = Array.from({ length: axes }, (_, i) => {
-      const p = getPoint(i, level);
-      return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
-    }).join(' ');
-    return pts;
-  });
-
-  const labelPositions = labels.map((label, i) => {
-    const p = getPoint(i, 1.28);
-    return { label, x: p.x, y: p.y };
-  });
+  async function handleSave() {
+    if (!name.trim()) { Alert.alert('エラー', '表示名を入力してください'); return; }
+    setSaving(true);
+    const ok = await onSave(name.trim(), bio.trim());
+    setSaving(false);
+    if (ok) onClose();
+    else Alert.alert('エラー', '保存に失敗しました。もう一度お試しください。');
+  }
 
   return (
-    <View style={{ alignItems: 'center', paddingVertical: 8 }}>
-      <Svg width={200} height={210} viewBox="0 0 200 210">
-        <Defs>
-          <LinearGradient id="rg" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0%" stopColor="#5a3fc0" stopOpacity="0.3" />
-            <Stop offset="100%" stopColor="#c4b0f8" stopOpacity="0.1" />
-          </LinearGradient>
-        </Defs>
+    <Modal transparent animationType="slide" visible={visible} onRequestClose={onClose}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={onClose}>
+          <View style={s.editModalContent} onStartShouldSetResponder={() => true}>
+            <Text style={s.modalTitle}>プロフィール編集</Text>
 
-        {gridPolygons.map((pts, i) => (
-          <Polygon key={i} points={pts} fill="none" stroke="#ece6ff" strokeWidth="1" />
-        ))}
+            <Text style={s.editLabel}>表示名</Text>
+            <TextInput
+              style={s.editInput}
+              value={name}
+              onChangeText={setName}
+              placeholder="あなたの名前"
+              placeholderTextColor={C.tm}
+              maxLength={20}
+              autoFocus
+            />
 
-        {Array.from({ length: axes }, (_, i) => {
-          const outer = getPoint(i, 1.0);
-          return <Line key={i} x1={cx} y1={cy} x2={outer.x.toFixed(1)} y2={outer.y.toFixed(1)} stroke="#ece6ff" strokeWidth="0.7" />;
-        })}
+            <Text style={s.editLabel}>自己紹介</Text>
+            <TextInput
+              style={[s.editInput, { height: 80, textAlignVertical: 'top' }]}
+              value={bio}
+              onChangeText={setBio}
+              placeholder="自己紹介を書いてみましょう"
+              placeholderTextColor={C.tm}
+              maxLength={100}
+              multiline
+            />
 
-        <Polygon points={dataPts} fill="url(#rg)" stroke="#5a3fc0" strokeWidth="1.8" strokeLinejoin="round" />
-
-        {labelPositions.map((lp, i) => (
-          <Path key={i} d="" />
-        ))}
-      </Svg>
-
-      {labelPositions.map((lp, i) => {
-        const offsetX = lp.x - 100;
-        const offsetY = lp.y - 95;
-        return (
-          <View key={i} style={{
-            position: 'absolute',
-            left: 100 + offsetX - 18,
-            top: 8 + offsetY + 95 - 7,
-          }}>
-            <Text style={s.rl}>{lp.label}</Text>
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+              <TouchableOpacity style={s.editCancelBtn} onPress={onClose}>
+                <Text style={s.editCancelTxt}>キャンセル</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.editSaveBtn, saving && { opacity: 0.5 }]}
+                onPress={handleSave}
+                disabled={saving}
+              >
+                <Text style={s.editSaveTxt}>{saving ? '保存中...' : '保存'}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        );
-      })}
-    </View>
+        </TouchableOpacity>
+      </KeyboardAvoidingView>
+    </Modal>
   );
 }
 
-function TraitBar({ label, value }) {
+function SettingsModal({ visible, onClose, onEditProfile }) {
   return (
-    <View style={s.trRow}>
-      <Text style={s.trLabel}>{label}</Text>
-      <View style={s.trBar}>
-        <View style={[s.trFill, { width: `${value}%` }]} />
-      </View>
-      <Text style={s.trVal}>{value > 0 ? value : '-'}</Text>
-    </View>
+    <Modal transparent animationType="fade" visible={visible} onRequestClose={onClose}>
+      <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={onClose}>
+        <View style={s.modalContent}>
+          <Text style={s.modalTitle}>設定</Text>
+
+          <TouchableOpacity style={s.modalItem} onPress={() => { onClose(); onEditProfile(); }}>
+            <Text style={s.modalIcon}>✎</Text>
+            <Text style={s.modalItemTxt}>プロフィール編集</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={s.modalItem}>
+            <Text style={s.modalIcon}>🔔</Text>
+            <Text style={s.modalItemTxt}>通知設定</Text>
+            <Text style={s.modalSoon}>準備中</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={s.modalItem}>
+            <Text style={s.modalIcon}>🔒</Text>
+            <Text style={s.modalItemTxt}>アカウント設定</Text>
+            <Text style={s.modalSoon}>準備中</Text>
+          </TouchableOpacity>
+
+          <View style={s.modalDivider} />
+
+          <TouchableOpacity style={s.modalItem} onPress={() => { onClose(); signOut(); }}>
+            <Text style={s.modalIcon}>🚪</Text>
+            <Text style={[s.modalItemTxt, { color: '#e05050' }]}>ログアウト</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </Modal>
   );
 }
 
 export default function MeScreen() {
   const [userName, setUserName] = useState('');
+  const [bio, setBio] = useState('');
   const [personaData, setPersonaData] = useState(null);
   const [convCount, setConvCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState(null);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
   async function loadData() {
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getCurrentUser();
       if (!user) return;
+      setCurrentUserId(user.id);
 
-      setUserName(user.email?.split('@')[0] || 'ユーザー');
+      const emailName = user.email?.split('@')[0] || 'ユーザー';
 
-      const { count } = await supabase
-        .from('ai_messages')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('role', 'user');
+      // プロフィールがあれば表示名を使用
+      const profile = await loadProfile(user.id);
+      setUserName(profile?.display_name || emailName);
+      setBio(profile?.bio || '');
 
-      setConvCount(count || 0);
+      setConvCount(await getConversationCount(user.id));
 
-      const { data: persona } = await supabase
-        .from('persona_data')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-
+      const persona = await loadPersona(user.id);
       if (persona) setPersonaData(persona);
     } catch (e) {
       console.log('loadData error:', e);
@@ -175,8 +163,14 @@ export default function MeScreen() {
     }
   }
 
-  async function handleSignOut() {
-    await supabase.auth.signOut();
+  async function handleSaveProfile(newName, newBio) {
+    if (!currentUserId) return false;
+    const ok = await saveProfile(currentUserId, { displayName: newName, bio: newBio });
+    if (ok) {
+      setUserName(newName);
+      setBio(newBio);
+    }
+    return ok;
   }
 
   const remaining = Math.max(0, 10 - (convCount % 10));
@@ -185,13 +179,31 @@ export default function MeScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
+      <SettingsModal
+        visible={showSettings}
+        onClose={() => setShowSettings(false)}
+        onEditProfile={() => setTimeout(() => setShowEditProfile(true), 300)}
+      />
+      <ProfileEditModal
+        visible={showEditProfile}
+        onClose={() => setShowEditProfile(false)}
+        currentName={userName}
+        currentBio={bio}
+        onSave={handleSaveProfile}
+      />
+
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
 
         <View style={s.header}>
           <Text style={s.name}>{userName}</Text>
-          <TouchableOpacity style={s.editBtn}>
-            <Text style={{ fontSize: 13, color: C.p }}>✎</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity style={s.headerIcon}>
+              <Text style={{ fontSize: 15 }}>📊</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.headerIcon} onPress={() => setShowSettings(true)}>
+              <Text style={{ fontSize: 15 }}>⚙️</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={s.hero}>
@@ -211,6 +223,7 @@ export default function MeScreen() {
             <Text style={s.typeName}>
               {personaData ? personaData.persona_type : 'AIと話すと判定されます'}
             </Text>
+            {bio ? <Text style={s.bioText}>{bio}</Text> : null}
           </View>
         </View>
 
@@ -309,9 +322,6 @@ export default function MeScreen() {
               <Text style={s.shareBtnTxt}>プレビュー</Text>
             </TouchableOpacity>
           </View>
-          <TouchableOpacity style={s.signOutBtn} onPress={handleSignOut}>
-            <Text style={s.signOutTxt}>ログアウト</Text>
-          </TouchableOpacity>
         </View>
 
       </ScrollView>
@@ -322,11 +332,12 @@ export default function MeScreen() {
 const s = StyleSheet.create({
   header: { paddingHorizontal: 24, paddingTop: 50, paddingBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   name: { fontSize: 26, fontWeight: '500', color: C.t1, letterSpacing: -0.5 },
-  editBtn: { width: 34, height: 34, borderRadius: 11, backgroundColor: C.pp, alignItems: 'center', justifyContent: 'center' },
+  headerIcon: { width: 34, height: 34, borderRadius: 11, backgroundColor: C.pp, alignItems: 'center', justifyContent: 'center' },
   hero: { flexDirection: 'row', alignItems: 'flex-start', gap: 16, paddingHorizontal: 24, paddingBottom: 18 },
   elBadge: { flexDirection: 'row', alignSelf: 'flex-start', backgroundColor: '#f5f5f5', borderWidth: 1, borderColor: '#e0e0e0', borderRadius: 12, paddingHorizontal: 9, paddingVertical: 3, marginBottom: 4 },
   elBadgeTxt: { fontSize: 10, color: '#999', fontWeight: '500' },
   typeName: { fontSize: 16, fontWeight: '500', color: C.t1, marginBottom: 4 },
+  bioText: { fontSize: 12, color: C.tm, lineHeight: 18 },
   counter: { marginHorizontal: 24, marginBottom: 16, backgroundColor: '#fff', borderWidth: 1, borderColor: C.bd, borderRadius: 14, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
   counterTxt: { fontSize: 12, fontWeight: '500', color: C.t1, marginBottom: 2 },
   counterSub: { fontSize: 11, color: C.tm },
@@ -334,16 +345,6 @@ const s = StyleSheet.create({
   barFill: { height: 4, backgroundColor: C.p, borderRadius: 2 },
   divider: { height: 1, backgroundColor: C.bd, marginHorizontal: 24, marginBottom: 14, marginTop: 8 },
   slabel: { fontSize: 10, color: C.tm, textTransform: 'uppercase', letterSpacing: 1, paddingHorizontal: 24, marginBottom: 10 },
-  emptyCard: { marginHorizontal: 24, marginBottom: 12, backgroundColor: C.bs, borderWidth: 1.5, borderColor: C.bm, borderStyle: 'dashed', borderRadius: 16, padding: 18, alignItems: 'center', gap: 6 },
-  emptyIcon: { fontSize: 24 },
-  emptyTitle: { fontSize: 12, fontWeight: '500', color: C.t2 },
-  emptySub: { fontSize: 11, color: C.tm, lineHeight: 18, textAlign: 'center' },
-  trRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 9 },
-  trLabel: { fontSize: 11, color: C.t2, width: 34 },
-  trBar: { flex: 1, height: 4, backgroundColor: C.pp, borderRadius: 2, overflow: 'hidden' },
-  trFill: { height: 4, backgroundColor: C.p, borderRadius: 2 },
-  trVal: { fontSize: 11, color: C.tm, width: 24, textAlign: 'right' },
-  rl: { fontSize: 10, color: C.p, textAlign: 'center' },
   profileCard: { marginHorizontal: 24, marginBottom: 14, backgroundColor: '#fff', borderWidth: 1, borderColor: C.bd, borderRadius: 14, padding: 14, gap: 4 },
   profileLabel: { fontSize: 10, color: C.tm, marginTop: 8 },
   profileValue: { fontSize: 13, color: C.t1, fontWeight: '500' },
@@ -353,6 +354,21 @@ const s = StyleSheet.create({
   shareBtn: { flex: 1, padding: 11, backgroundColor: C.pp, borderWidth: 1, borderColor: C.bm, borderRadius: 14, alignItems: 'center' },
   previewBtn: { flex: 1, padding: 11, backgroundColor: '#fff', borderWidth: 1, borderColor: C.bm, borderRadius: 14, alignItems: 'center' },
   shareBtnTxt: { fontSize: 12, color: C.p },
-  signOutBtn: { padding: 11, backgroundColor: '#fff', borderWidth: 1, borderColor: '#ffcccc', borderRadius: 14, alignItems: 'center' },
-  signOutTxt: { fontSize: 12, color: '#e05050' },
+  // Settings Modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40 },
+  modalTitle: { fontSize: 16, fontWeight: '600', color: C.t1, marginBottom: 16 },
+  modalItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, gap: 12 },
+  modalIcon: { fontSize: 16, width: 24, textAlign: 'center' },
+  modalItemTxt: { fontSize: 14, color: C.t1, flex: 1 },
+  modalSoon: { fontSize: 10, color: C.tm, backgroundColor: C.pp, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
+  modalDivider: { height: 1, backgroundColor: C.bd, marginVertical: 4 },
+  // Profile Edit Modal
+  editModalContent: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40 },
+  editLabel: { fontSize: 11, color: C.tm, marginBottom: 6, marginTop: 12 },
+  editInput: { backgroundColor: C.pp, borderWidth: 1, borderColor: C.bm, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: C.t1 },
+  editCancelBtn: { flex: 1, padding: 12, backgroundColor: '#fff', borderWidth: 1, borderColor: C.bm, borderRadius: 14, alignItems: 'center' },
+  editCancelTxt: { fontSize: 13, color: C.tm },
+  editSaveBtn: { flex: 1, padding: 12, backgroundColor: C.p, borderRadius: 14, alignItems: 'center' },
+  editSaveTxt: { fontSize: 13, color: '#fff', fontWeight: '500' },
 });

@@ -1,18 +1,14 @@
 import { useState } from 'react';
 import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+  ActivityIndicator, ScrollView, StyleSheet, Text,
+  TextInput, TouchableOpacity, View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { supabase } from './supabase';
-import { C, ELEMENT_COLORS } from './theme';
+import { getCurrentUser } from '../services/auth';
+import { supabase } from '../supabase';
+import { C, ELEMENT_COLORS } from '../theme';
 
-const FILTERS = ['全員', 'Fire', 'Water', 'Wind', 'Earth'];
+const FILTERS = ['全員', '友人', '恋愛', '仕事'];
 
 function UserCard({ user, personaData }) {
   const elementInfo = personaData?.element_type ? ELEMENT_COLORS[personaData.element_type] : null;
@@ -54,7 +50,7 @@ export default function ResonanceScreen() {
     setLoading(true);
     setSearched(true);
     try {
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const currentUser = await getCurrentUser();
 
       let personaQuery = supabase
         .from('persona_data')

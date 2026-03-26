@@ -1,34 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView, Platform,
+  ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
   ScrollView, StyleSheet, Text, TextInput,
   TouchableOpacity, View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { supabase } from './supabase';
-import { C } from './theme';
-
-const SYSTEM_PROMPT = `あなたはユーザー専用のパーソナルAIです。会話を通じてユーザーの性格・価値観・思考パターン・興味関心を学習し、それを会話に反映させてください。
-
-ルール：
-- どんな話題にも誠実に答える（天気・仕事・恋愛・雑談・専門知識など）
-- ユーザーが辛さや苦しさを話す時は、そのユーザーの性格や状況に合わせた最適な寄り添い方をする。一般的な慰めではなく、その人だけに響く言葉を選ぶ
-- 自傷・自殺に関する話題は否定せず受け止めた上で、自然な流れで専門機関への相談を案内する
-- 違法行為の具体的な実行方法・他者への暴力の手助けはしない
-- 会話が積み重なるほどユーザーへの理解が深まり、より個人に最適化された返答をする
-- ユーザーの特性が見えてきたら、それを前提において会話を進める
-- 時々「あなたは〜な傾向がありますね」という気づきを自然に添える
-- プレーンテキストのみ、マークダウン記号は使わない
-- 返答は簡潔に、ただし内容は深く
-- ユーザーの話し方・口調・テンションに合わせてトーンを変える
-- 最初は丁寧語、会話が深まるにつれて自然に距離感を縮める
-- ユーザーが方言を使う場合は少しそれに合わせる
-- 会話回数が増えるほど「あなたらしいですね」など個人への言及を増やす
-- 返答の最後に、会話を広げる自然な一言を添える。ただし質問の連投はしない
-- ユーザーの発言から日常の場面を想像し、自然に話を広げる
-- 沈黙は歓迎。AIから圧をかけない`;
+import { getCurrentUser } from '../services/auth';
+import { loadMessages, saveMessage, sendToAI } from '../services/messages';
+import { C } from '../theme';
 
 export default function AIChatScreen({ onBack }) {
   const [messages, setMessages] = useState([]);
@@ -38,17 +17,20 @@ export default function AIChatScreen({ onBack }) {
   const [currentUser, setCurrentUser] = useState(null);
   const scrollRef = useRef(null);
 
-  useEffect(() => {
-    initScreen();
-  }, []);
+  const WELCOME = { role: 'assistant', content: 'こんにちは。何でも話しかけてください。あなたのことを少しずつ理解していきます。' };
+
+  useEffect(() => { initScreen(); }, []);
 
   async function initScreen() {
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getCurrentUser();
       if (!user) { setLoading(false); return; }
       setCurrentUser(user);
-      await loadMessages(user.id);
+
+      const history = await loadMessages(user.id);
+      setMessages(history || [WELCOME]);
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: false }), 100);
     } catch (e) {
       Alert.alert('エラー', '読み込みに失敗しました。再度お試しください。');
     } finally {
@@ -56,32 +38,7 @@ export default function AIChatScreen({ onBack }) {
     }
   }
 
-  async function loadMessages(userId) {
-    const { data, error } = await supabase
-      .from('ai_messages')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: true })
-      .limit(200);
-
-    if (error) {
-      setMessages([{ role: 'assistant', content: 'こんにちは。何でも話しかけてください。あなたのことを少しずつ理解していきます。' }]);
-      return;
-    }
-
-    if (data && data.length > 0) {
-      setMessages(data.map(m => ({ role: m.role, content: m.content })));
-    } else {
-      setMessages([{ role: 'assistant', content: 'こんにちは。何でも話しかけてください。あなたのことを少しずつ理解していきます。' }]);
-    }
-    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: false }), 100);
-  }
-
-  async function saveMessage(userId, role, content) {
-    await supabase.from('ai_messages').insert({ user_id: userId, role, content });
-  }
-
-  async function sendMessage() {
+  async function handleSend() {
     const text = input.trim();
     if (!text || typing || !currentUser) return;
     setInput('');
@@ -93,22 +50,7 @@ export default function AIChatScreen({ onBack }) {
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
 
     try {
-      const res = await fetch('https://oasis-api-nine.vercel.app/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'gemini-2.5-flash',
-          max_tokens: 1000,
-          system: SYSTEM_PROMPT,
-          messages: newMessages.map(m => ({ role: m.role, content: m.content })),
-          userId: currentUser.id,
-        }),
-      });
-
-      if (!res.ok) throw new Error('サーバーエラー');
-
-      const data = await res.json();
-      const reply = data?.content?.[0]?.text || 'もう一度試してください';
+      const reply = await sendToAI(newMessages, currentUser.id);
       setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
       await saveMessage(currentUser.id, 'assistant', reply);
     } catch (e) {
@@ -176,11 +118,11 @@ export default function AIChatScreen({ onBack }) {
             placeholderTextColor={C.tm}
             value={input}
             onChangeText={setInput}
-            onSubmitEditing={sendMessage}
+            onSubmitEditing={handleSend}
             returnKeyType="send"
             multiline
           />
-          <TouchableOpacity style={[s.sendBtn, typing && { opacity: 0.5 }]} onPress={sendMessage} disabled={typing}>
+          <TouchableOpacity style={[s.sendBtn, typing && { opacity: 0.5 }]} onPress={handleSend} disabled={typing}>
             <Text style={{ color: '#fff', fontSize: 18 }}>↑</Text>
           </TouchableOpacity>
         </View>
