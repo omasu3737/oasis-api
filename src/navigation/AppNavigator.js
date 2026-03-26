@@ -4,9 +4,11 @@ import { NavigationContainer } from '@react-navigation/native';
 import { Text, View } from 'react-native';
 import Svg, { Circle, Line, Path } from 'react-native-svg';
 import AIChatScreen from '../screens/AIChatScreen';
+import DMScreen from '../screens/DMScreen';
 import MeScreen from '../screens/MeScreen';
 import ResonanceScreen from '../screens/ResonanceScreen';
 import TalkScreen from '../screens/TalkScreen';
+import UserProfileScreen from '../screens/UserProfileScreen';
 import { C } from '../theme';
 
 function IconMe({ color }) {
@@ -101,6 +103,16 @@ export default function AppNavigator() {
         <Stack.Screen
           name="AIChat"
           component={AIChatScreen}
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="DM"
+          component={DMScreen}
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="UserProfile"
+          component={UserProfileScreen}
           options={{ animation: 'slide_from_right' }}
         />
       </Stack.Navigator>

@@ -1,3 +1,4 @@
+import { useNavigation } from '@react-navigation/native';
 import { useState } from 'react';
 import {
   ActivityIndicator, ScrollView, StyleSheet, Text,
@@ -10,12 +11,12 @@ import { C, ELEMENT_COLORS } from '../theme';
 
 const FILTERS = ['全員', '友人', '恋愛', '仕事'];
 
-function UserCard({ user, personaData, profile }) {
+function UserCard({ user, personaData, profile, onPress }) {
   const elementInfo = personaData?.element_type ? ELEMENT_COLORS[personaData.element_type] : null;
   const displayName = profile?.display_name || user.email?.split('@')[0] || 'ユーザー';
 
   return (
-    <TouchableOpacity style={s.userCard}>
+    <TouchableOpacity style={s.userCard} onPress={onPress}>
       <View style={s.userIcon}>
         <Text style={{ fontSize: 18, color: C.p, fontWeight: '500' }}>
           {displayName[0]?.toUpperCase() || '?'}
@@ -41,6 +42,7 @@ function UserCard({ user, personaData, profile }) {
 }
 
 export default function ResonanceScreen() {
+  const navigation = useNavigation();
   const [query, setQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('全員');
   const [users, setUsers] = useState([]);
@@ -163,7 +165,11 @@ export default function ResonanceScreen() {
         ) : users.length > 0 ? (
           <View style={{ paddingTop: 8 }}>
             {users.map((item, i) => (
-              <UserCard key={i} user={item.user} personaData={item.personaData} profile={item.profile} />
+              <UserCard key={i} user={item.user} personaData={item.personaData} profile={item.profile}
+                onPress={() => navigation.navigate('UserProfile', {
+                  userId: item.user.id,
+                  userName: item.profile?.display_name || item.user.email?.split('@')[0],
+                })} />
             ))}
           </View>
         ) : (
