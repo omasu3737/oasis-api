@@ -1,16 +1,16 @@
 // OASIS カラーパレット（全画面共通）
 export const C = {
-  p: '#5a3fc0',   // primary
-  pl: '#7b5ce0',  // primary light
-  pp: '#f0ecff',  // primary pale
-  pm: '#c4b0f8',  // primary muted
-  t1: '#18094a',  // text primary
-  t2: '#6b5a9e',  // text secondary
-  tm: '#b0a8d0',  // text muted
-  bg: '#fdfcff',  // background
-  bd: '#ece6ff',  // border
-  bs: '#f8f5ff',  // background subtle
-  bm: '#d8ceff',  // border muted
+  p: '#6a1fc8',   // primary（鮮やかな濃い紫）
+  pl: '#8b45e0',  // primary light
+  pp: '#f0e8ff',  // primary pale
+  pm: '#c09ef8',  // primary muted
+  t1: '#1a0a40',  // text primary
+  t2: '#6b4a9e',  // text secondary
+  tm: '#a498c0',  // text muted
+  bg: '#fcfbff',  // background
+  bd: '#e8dfff',  // border
+  bs: '#f6f2ff',  // background subtle
+  bm: '#d4c4f5',  // border muted
 };
 
 export const ELEMENT_COLORS = {

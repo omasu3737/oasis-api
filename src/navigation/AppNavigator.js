@@ -9,6 +9,7 @@ import DMScreen from '../screens/DMScreen';
 import MeScreen from '../screens/MeScreen';
 import ResonanceScreen from '../screens/ResonanceScreen';
 import TalkScreen from '../screens/TalkScreen';
+import TermsScreen from '../screens/TermsScreen';
 import UserProfileScreen from '../screens/UserProfileScreen';
 import { C } from '../theme';
 
@@ -119,6 +120,11 @@ export default function AppNavigator() {
         <Stack.Screen
           name="AskAI"
           component={AskAIScreen}
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="Terms"
+          component={TermsScreen}
           options={{ animation: 'slide_from_right' }}
         />
       </Stack.Navigator>

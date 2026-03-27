@@ -1,15 +1,18 @@
+import { useNavigation } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
 import {
   Alert, KeyboardAvoidingView, Modal, Platform, ScrollView,
   StyleSheet, Text, TextInput, TouchableOpacity, View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Defs, LinearGradient, Stop, Text as SvgText } from 'react-native-svg';
 import RadarChart from '../components/RadarChart';
 import TraitBar from '../components/TraitBar';
 import UserIcon from '../components/UserIcon';
 import { getCurrentUser, signOut } from '../services/auth';
 import { getConversationCount, loadPersona } from '../services/persona';
 import { loadProfile, saveProfile } from '../services/profile';
+import { getMyQuestions, answerQuestion } from '../services/questions';
 import { C, ELEMENT_COLORS } from '../theme';
 
 function SLabel({ text, sub }) {
@@ -175,7 +178,7 @@ function ProfileEditModal({ visible, onClose, profile, onSave }) {
 }
 
 // 設定モーダル
-function SettingsModal({ visible, onClose, onEditProfile }) {
+function SettingsModal({ visible, onClose, onEditProfile, onTerms }) {
   return (
     <Modal transparent animationType="fade" visible={visible} onRequestClose={onClose}>
       <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={onClose}>
@@ -200,6 +203,11 @@ function SettingsModal({ visible, onClose, onEditProfile }) {
             <Text style={s.menuSoon}>準備中</Text>
           </TouchableOpacity>
 
+          <TouchableOpacity style={s.menuItem} onPress={() => { onClose(); onTerms(); }}>
+            <View style={s.menuIcon}><Text style={{ fontSize: 16 }}>📄</Text></View>
+            <View><Text style={s.menuLabel}>利用規約・プライバシー</Text></View>
+          </TouchableOpacity>
+
           <View style={s.settingsDivider} />
 
           <TouchableOpacity style={s.menuItem} onPress={() => { onClose(); signOut(); }}>
@@ -213,6 +221,7 @@ function SettingsModal({ visible, onClose, onEditProfile }) {
 }
 
 export default function MeScreen() {
+  const navigation = useNavigation();
   const [profile, setProfile] = useState(null);
   const [personaData, setPersonaData] = useState(null);
   const [convCount, setConvCount] = useState(0);
@@ -220,6 +229,9 @@ export default function MeScreen() {
   const [showSettings, setShowSettings] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [questions, setQuestions] = useState([]);
+  const [answeringId, setAnsweringId] = useState(null);
+  const [answerDraft, setAnswerDraft] = useState('');
 
   useEffect(() => { loadData(); }, []);
 
@@ -233,9 +245,14 @@ export default function MeScreen() {
       const p = await loadProfile(user.id);
       setProfile(p || { display_name: user.email?.split('@')[0] || 'ユーザー' });
 
-      setConvCount(await getConversationCount(user.id));
-      const persona = await loadPersona(user.id);
+      const [count, persona, qs] = await Promise.all([
+        getConversationCount(user.id),
+        loadPersona(user.id),
+        getMyQuestions(user.id),
+      ]);
+      setConvCount(count);
       if (persona) setPersonaData(persona);
+      setQuestions(qs);
     } catch (e) {
       console.log('loadData error:', e);
     } finally {
@@ -276,6 +293,7 @@ export default function MeScreen() {
         visible={showSettings}
         onClose={() => setShowSettings(false)}
         onEditProfile={() => setTimeout(() => setShowEditProfile(true), 300)}
+        onTerms={() => navigation.navigate('Terms')}
       />
       <ProfileEditModal
         visible={showEditProfile}
@@ -288,7 +306,27 @@ export default function MeScreen() {
 
         {/* ヘッダー */}
         <View style={s.header}>
-          <Text style={s.name}>{userName}</Text>
+          <View>
+            <Svg width={72} height={18} viewBox="0 0 72 18">
+              <Defs>
+                <LinearGradient id="oasisGrad" x1="0" y1="0" x2="1" y2="0">
+                  <Stop offset="0%" stopColor="#00d4ff" />
+                  <Stop offset="50%" stopColor="#a855f7" />
+                  <Stop offset="100%" stopColor="#ec4899" />
+                </LinearGradient>
+              </Defs>
+              <SvgText
+                fill="url(#oasisGrad)"
+                fontSize="15"
+                fontWeight="800"
+                letterSpacing="3"
+                x="0"
+                y="14"
+              >OASIS</SvgText>
+            </Svg>
+            <View style={{ height: 6 }} />
+            <Text style={s.name}>{userName}</Text>
+          </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <TouchableOpacity style={s.headerIcon} onPress={() => setShowSettings(true)}>
               <Text style={{ fontSize: 15 }}>⚙️</Text>
@@ -325,6 +363,18 @@ export default function MeScreen() {
               <View key={i} style={s.tag}><Text style={s.tagTxt}>{kw}</Text></View>
             ))}
           </View>
+        ) : null}
+
+        {/* 初回CTA（会話0回の新規ユーザー向け） */}
+        {!loading && convCount === 0 && !personaData ? (
+          <TouchableOpacity style={s.ctaCard} onPress={() => navigation.navigate('AIChat')}>
+            <Text style={s.ctaEmoji}>✦</Text>
+            <Text style={s.ctaTitle}>まずAIと話してみよう</Text>
+            <Text style={s.ctaSub}>10回会話するとあなたの人格が分析されます{'\n'}話すほど、あなたのデジタル分身が育ちます</Text>
+            <View style={s.ctaBtn}>
+              <Text style={s.ctaBtnTxt}>AIと話す</Text>
+            </View>
+          </TouchableOpacity>
         ) : null}
 
         {/* 分析までのカウンター */}
@@ -488,6 +538,62 @@ export default function MeScreen() {
           <LockedCard icon="✍️" label="文体プロファイル" hint="AIと10回会話すると解放" />
         )}
 
+        {/* あなたへの質問 */}
+        {questions.length > 0 ? (
+          <>
+            <Divider />
+            <SLabel text="あなたへの質問" sub={`${questions.filter(q => q.status === 'pending').length}件未回答`} />
+            {questions.map((q) => (
+              <View key={q.id} style={s.qaCard}>
+                <Text style={s.qaQ}>Q. {q.question_text}</Text>
+                {q.source_count > 1 ? (
+                  <Text style={s.qaCount}>{q.source_count}人がこの質問をしました</Text>
+                ) : null}
+                {q.status === 'answered' ? (
+                  <View style={s.qaAnswered}>
+                    <Text style={s.qaA}>{q.answer_text}</Text>
+                  </View>
+                ) : answeringId === q.id ? (
+                  <View style={{ marginTop: 8 }}>
+                    <TextInput
+                      style={s.qaInput}
+                      value={answerDraft}
+                      onChangeText={setAnswerDraft}
+                      placeholder="回答を入力..."
+                      placeholderTextColor={C.tm}
+                      multiline
+                      maxLength={300}
+                    />
+                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 6 }}>
+                      <TouchableOpacity style={s.qaCancelBtn} onPress={() => { setAnsweringId(null); setAnswerDraft(''); }}>
+                        <Text style={s.qaCancelTxt}>キャンセル</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[s.qaSubmitBtn, !answerDraft.trim() && { opacity: 0.5 }]}
+                        disabled={!answerDraft.trim()}
+                        onPress={async () => {
+                          const ok = await answerQuestion(q.id, answerDraft.trim());
+                          if (ok) {
+                            setQuestions(prev => prev.map(p => p.id === q.id ? { ...p, answer_text: answerDraft.trim(), status: 'answered' } : p));
+                            setAnsweringId(null);
+                            setAnswerDraft('');
+                          }
+                        }}
+                      >
+                        <Text style={s.qaSubmitTxt}>回答する</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ) : (
+                  <TouchableOpacity style={s.qaAnswerBtn} onPress={() => { setAnsweringId(q.id); setAnswerDraft(''); }}>
+                    <Text style={s.qaAnswerBtnTxt}>回答する</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))}
+          </>
+        ) : null}
+
         <Divider />
 
         {/* シェア・プレビュー */}
@@ -518,6 +624,13 @@ const s = StyleSheet.create({
   typeName: { fontSize: 16, fontWeight: '500', color: C.t1, marginBottom: 4 },
   commentText: { fontSize: 11, color: C.t2, lineHeight: 16 },
   tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingHorizontal: 24, marginBottom: 14 },
+  // 初回CTA
+  ctaCard: { marginHorizontal: 24, marginBottom: 16, backgroundColor: C.p, borderRadius: 20, padding: 24, alignItems: 'center' },
+  ctaEmoji: { fontSize: 28, color: '#fff', marginBottom: 8 },
+  ctaTitle: { fontSize: 16, fontWeight: '600', color: '#fff', marginBottom: 6 },
+  ctaSub: { fontSize: 12, color: 'rgba(255,255,255,0.8)', textAlign: 'center', lineHeight: 20, marginBottom: 16 },
+  ctaBtn: { backgroundColor: '#fff', paddingHorizontal: 28, paddingVertical: 10, borderRadius: 20 },
+  ctaBtnTxt: { fontSize: 13, fontWeight: '600', color: C.p },
   counter: { marginHorizontal: 24, marginBottom: 16, backgroundColor: '#fff', borderWidth: 1, borderColor: C.bd, borderRadius: 14, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
   counterTxt: { fontSize: 12, fontWeight: '500', color: C.t1, marginBottom: 2 },
   counterSub: { fontSize: 11, color: C.tm },
@@ -546,6 +659,19 @@ const s = StyleSheet.create({
   lockedLabel: { fontSize: 12, fontWeight: '500', color: C.tm },
   lockedHint: { fontSize: 10, color: C.bm, marginTop: 1 },
   lockIcon: { opacity: 0.5 },
+  // Q&A
+  qaCard: { marginHorizontal: 24, marginBottom: 8, backgroundColor: '#fff', borderWidth: 1, borderColor: C.bd, borderRadius: 14, padding: 12 },
+  qaQ: { fontSize: 12, fontWeight: '500', color: C.p },
+  qaCount: { fontSize: 10, color: C.tm, marginTop: 4 },
+  qaAnswered: { marginTop: 8, backgroundColor: C.bs, borderRadius: 10, padding: 10 },
+  qaA: { fontSize: 12, color: C.t1, lineHeight: 18 },
+  qaInput: { backgroundColor: C.pp, borderWidth: 1, borderColor: C.bm, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 12, color: C.t1, height: 70, textAlignVertical: 'top' },
+  qaCancelBtn: { flex: 1, padding: 8, backgroundColor: '#fff', borderWidth: 1, borderColor: C.bm, borderRadius: 10, alignItems: 'center' },
+  qaCancelTxt: { fontSize: 11, color: C.tm },
+  qaSubmitBtn: { flex: 1, padding: 8, backgroundColor: C.p, borderRadius: 10, alignItems: 'center' },
+  qaSubmitTxt: { fontSize: 11, color: '#fff', fontWeight: '500' },
+  qaAnswerBtn: { marginTop: 8, padding: 8, backgroundColor: C.pp, borderWidth: 1, borderColor: C.bm, borderRadius: 10, alignItems: 'center' },
+  qaAnswerBtnTxt: { fontSize: 11, color: C.p },
   // 相性カード
   compatCard: { marginHorizontal: 24, marginBottom: 12, borderRadius: 16, padding: 14, backgroundColor: '#f5f0ff', borderWidth: 1, borderColor: C.pm },
   compatText: { fontSize: 12, color: C.t1, lineHeight: 20 },
