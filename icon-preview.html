@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+body { background: #e8e8e8; display: flex; justify-content: center; align-items: center; min-height: 100vh; gap: 40px; flex-wrap: wrap; font-family: sans-serif; flex-direction: column; padding: 40px; }
+.row { display: flex; gap: 40px; align-items: flex-end; }
+.preview { text-align: center; }
+.icon { border-radius: 22%; box-shadow: 0 4px 20px rgba(0,0,0,0.15); overflow: hidden; display: inline-block; }
+.label { margin-top: 8px; color: #666; font-size: 13px; }
+.section { font-size: 16px; color: #333; font-weight: bold; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<div class="section">最終版 — 大きめしずく + 2枚目配色 + 左右非対称 + 滑らか光沢</div>
+<div class="row">
+  <div class="preview">
+    <div class="icon" style="width:256px;height:256px;">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="256" height="256">
+        <defs>
+          <!-- 2枚目参考: シアン上部→紫中央→ピンク下部（均等配分、滑らか） -->
+          <linearGradient id="mg" x1="0.48" y1="0" x2="0.52" y2="1">
+            <stop offset="0%" stop-color="#00e8ff"/>
+            <stop offset="10%" stop-color="#00d8ff"/>
+            <stop offset="22%" stop-color="#20b8f8"/>
+            <stop offset="34%" stop-color="#4898f0"/>
+            <stop offset="44%" stop-color="#6878e4"/>
+            <stop offset="54%" stop-color="#8858d8"/>
+            <stop offset="64%" stop-color="#9e44cc"/>
+            <stop offset="74%" stop-color="#b840b8"/>
+            <stop offset="84%" stop-color="#d848a0"/>
+            <stop offset="92%" stop-color="#ee4890"/>
+            <stop offset="100%" stop-color="#ff58a0"/>
+          </linearGradient>
+
+          <!-- 左側の大きな光沢 -->
+          <linearGradient id="hlL" x1="0" y1="0.1" x2="0.8" y2="0.6">
+            <stop offset="0%" stop-color="rgba(255,255,255,0.55)"/>
+            <stop offset="30%" stop-color="rgba(255,255,255,0.15)"/>
+            <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+          </linearGradient>
+
+          <!-- 右上のかすかなエッジ光 -->
+          <linearGradient id="hlR" x1="1" y1="0" x2="0.2" y2="0.8">
+            <stop offset="0%" stop-color="rgba(0,232,255,0.3)"/>
+            <stop offset="20%" stop-color="rgba(0,220,255,0.06)"/>
+            <stop offset="100%" stop-color="rgba(0,220,255,0)"/>
+          </linearGradient>
+
+          <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur"/>
+            <feColorMatrix in="blur" type="saturate" values="1.5" result="sat"/>
+            <feMerge><feMergeNode in="sat"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+
+          <filter id="shadow" x="-20%" y="-10%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="8" stdDeviation="15" flood-color="#9040b0" flood-opacity="0.18"/>
+          </filter>
+
+          <!-- 大きめ左右非対称しずく（画面の85%くらい使う） -->
+          <path id="drop" d="M 528 100 C 540 150 585 270 618 360 C 675 500 700 590 685 680 C 665 780 595 870 505 875 C 405 880 330 820 305 730 C 280 640 290 555 335 450 C 390 325 505 170 528 100 Z"/>
+          <clipPath id="dropClip"><use href="#drop"/></clipPath>
+        </defs>
+
+        <rect width="1024" height="1024" rx="180" fill="#ffffff"/>
+
+        <!-- 影 -->
+        <g filter="url(#shadow)"><use href="#drop" fill="url(#mg)"/></g>
+
+        <!-- 本体（彩度ブースト） -->
+        <g filter="url(#glow)"><use href="#drop" fill="url(#mg)"/></g>
+
+        <g clip-path="url(#dropClip)">
+          <!-- 左側の滑らかな光沢ストライプ -->
+          <ellipse cx="410" cy="430" rx="100" ry="280" fill="url(#hlL)" transform="rotate(-6 410 430)"/>
+
+          <!-- 光沢ポイント（大） -->
+          <ellipse cx="445" cy="280" rx="18" ry="28" fill="rgba(255,255,255,0.6)"/>
+
+          <!-- 光沢ポイント（小） -->
+          <ellipse cx="432" cy="338" rx="9" ry="14" fill="rgba(255,255,255,0.32)"/>
+
+          <!-- 右上のシアンエッジ反射 -->
+          <ellipse cx="580" cy="320" rx="45" ry="130" fill="url(#hlR)" transform="rotate(8 580 320)"/>
+
+          <!-- 下部の微かな反射弧 -->
+          <ellipse cx="500" cy="800" rx="95" ry="22" fill="rgba(255,255,255,0.04)"/>
+        </g>
+      </svg>
+    </div>
+    <div class="label">256px</div>
+  </div>
+  <div class="preview">
+    <div class="icon" style="width:128px;height:128px;">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="128" height="128">
+        <defs>
+          <linearGradient id="mgs" x1="0.48" y1="0" x2="0.52" y2="1">
+            <stop offset="0%" stop-color="#00e8ff"/><stop offset="10%" stop-color="#00d8ff"/>
+            <stop offset="22%" stop-color="#20b8f8"/><stop offset="34%" stop-color="#4898f0"/>
+            <stop offset="44%" stop-color="#6878e4"/><stop offset="54%" stop-color="#8858d8"/>
+            <stop offset="64%" stop-color="#9e44cc"/><stop offset="74%" stop-color="#b840b8"/>
+            <stop offset="84%" stop-color="#d848a0"/><stop offset="92%" stop-color="#ee4890"/>
+            <stop offset="100%" stop-color="#ff58a0"/>
+          </linearGradient>
+          <linearGradient id="hlLs" x1="0" y1="0.1" x2="0.8" y2="0.6">
+            <stop offset="0%" stop-color="rgba(255,255,255,0.55)"/><stop offset="30%" stop-color="rgba(255,255,255,0.15)"/><stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+          </linearGradient>
+          <filter id="glows" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur"/>
+            <feColorMatrix in="blur" type="saturate" values="1.5" result="sat"/>
+            <feMerge><feMergeNode in="sat"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <filter id="shadows" x="-20%" y="-10%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="8" stdDeviation="15" flood-color="#9040b0" flood-opacity="0.18"/>
+          </filter>
+          <path id="drops" d="M 528 100 C 540 150 585 270 618 360 C 675 500 700 590 685 680 C 665 780 595 870 505 875 C 405 880 330 820 305 730 C 280 640 290 555 335 450 C 390 325 505 170 528 100 Z"/>
+          <clipPath id="dropClips"><use href="#drops"/></clipPath>
+        </defs>
+        <rect width="1024" height="1024" rx="180" fill="#ffffff"/>
+        <g filter="url(#shadows)"><use href="#drops" fill="url(#mgs)"/></g>
+        <g filter="url(#glows)"><use href="#drops" fill="url(#mgs)"/></g>
+        <g clip-path="url(#dropClips)">
+          <ellipse cx="410" cy="430" rx="100" ry="280" fill="url(#hlLs)" transform="rotate(-6 410 430)"/>
+          <ellipse cx="445" cy="280" rx="18" ry="28" fill="rgba(255,255,255,0.6)"/>
+          <ellipse cx="432" cy="338" rx="9" ry="14" fill="rgba(255,255,255,0.32)"/>
+        </g>
+      </svg>
+    </div>
+    <div class="label">128px</div>
+  </div>
+  <div class="preview">
+    <div class="icon" style="width:64px;height:64px;">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="64" height="64">
+        <defs>
+          <linearGradient id="mgt" x1="0.48" y1="0" x2="0.52" y2="1">
+            <stop offset="0%" stop-color="#00e8ff"/><stop offset="10%" stop-color="#00d8ff"/>
+            <stop offset="22%" stop-color="#20b8f8"/><stop offset="34%" stop-color="#4898f0"/>
+            <stop offset="44%" stop-color="#6878e4"/><stop offset="54%" stop-color="#8858d8"/>
+            <stop offset="64%" stop-color="#9e44cc"/><stop offset="74%" stop-color="#b840b8"/>
+            <stop offset="84%" stop-color="#d848a0"/><stop offset="92%" stop-color="#ee4890"/>
+            <stop offset="100%" stop-color="#ff58a0"/>
+          </linearGradient>
+          <filter id="glowt" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur"/>
+            <feColorMatrix in="blur" type="saturate" values="1.5" result="sat"/>
+            <feMerge><feMergeNode in="sat"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <path id="dropt" d="M 528 100 C 540 150 585 270 618 360 C 675 500 700 590 685 680 C 665 780 595 870 505 875 C 405 880 330 820 305 730 C 280 640 290 555 335 450 C 390 325 505 170 528 100 Z"/>
+        </defs>
+        <rect width="1024" height="1024" rx="180" fill="#ffffff"/>
+        <g filter="url(#glowt)"><use href="#dropt" fill="url(#mgt)"/></g>
+      </svg>
+    </div>
+    <div class="label">64px</div>
+  </div>
+</div>
+
+</body>
+</html>

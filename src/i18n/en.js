@@ -110,6 +110,8 @@ export default {
   me_edit_save_failed: 'Failed to save',
   me_edit_saving: 'Saving...',
   me_edit_save: 'Save',
+  me_edit_photo: 'Change photo',
+  me_edit_photo_permission: 'Please allow access to your photo library',
   me_edit_name_placeholder: 'Your name',
   me_edit_age_placeholder: 'e.g. 28',
   me_edit_birthday_placeholder: 'e.g. 1998-03-15',
@@ -150,6 +152,8 @@ export default {
   talk_accept: 'Accept',
   talk_reject: 'Decline',
   talk_no_requests: 'No new requests',
+  talk_search_placeholder: 'Search by name...',
+  talk_search_hint: 'Enter a name to search for users',
 
   // AI Chat
   chat_placeholder: 'What\'s on your mind...',

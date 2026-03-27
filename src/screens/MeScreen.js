@@ -1,7 +1,7 @@
 import { useNavigation } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
 import {
-  Alert, KeyboardAvoidingView, Modal, Platform, ScrollView,
+  Alert, Image, KeyboardAvoidingView, Modal, Platform, ScrollView,
   StyleSheet, Text, TextInput, TouchableOpacity, View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,9 +11,10 @@ import TraitBar from '../components/TraitBar';
 import UserIcon from '../components/UserIcon';
 import { useTheme } from '../context/ThemeContext';
 import { useI18n, LANGUAGES } from '../i18n';
+import * as ImagePicker from 'expo-image-picker';
 import { getCurrentUser, signOut, deleteAccount } from '../services/auth';
 import { getConversationCount, loadPersona } from '../services/persona';
-import { loadProfile, saveProfile } from '../services/profile';
+import { loadProfile, saveProfile, uploadAvatar } from '../services/profile';
 import { getMyQuestions, answerQuestion } from '../services/questions';
 
 function SLabel({ text, sub }) {
@@ -75,7 +76,7 @@ function AnalysisCard({ title, mainText, description, tags, icon }) {
 }
 
 // Profile edit modal (all fields)
-function ProfileEditModal({ visible, onClose, profile, onSave }) {
+function ProfileEditModal({ visible, onClose, profile, onSave, currentUserId }) {
   const { colors: C } = useTheme();
   const { t } = useI18n();
   const s = getStyles(C);
@@ -88,6 +89,8 @@ function ProfileEditModal({ visible, onClose, profile, onSave }) {
   const [bio, setBio] = useState('');
   const [privateTopics, setPrivateTopics] = useState('');
   const [saving, setSaving] = useState(false);
+  const [avatarUri, setAvatarUri] = useState(null); // 新規選択した画像
+  const [currentAvatar, setCurrentAvatar] = useState(null); // 既存のURL
 
   useEffect(() => {
     if (visible && profile) {
@@ -98,12 +101,39 @@ function ProfileEditModal({ visible, onClose, profile, onSave }) {
       setBirthday(profile.birthday || '');
       setBio(profile.bio || '');
       setPrivateTopics(profile.private_topics || '');
+      setCurrentAvatar(profile.avatar_url || null);
+      setAvatarUri(null);
     }
   }, [visible]);
+
+  async function handlePickImage() {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(t('error'), t('me_edit_photo_permission'));
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.75,
+    });
+    if (!result.canceled && result.assets?.[0]) {
+      setAvatarUri(result.assets[0].uri);
+    }
+  }
 
   async function handleSave() {
     if (!name.trim()) { Alert.alert(t('error'), t('me_edit_name_required')); return; }
     setSaving(true);
+
+    // アバターのアップロード（選択されていれば）
+    let avatarUrl = currentAvatar;
+    if (avatarUri && currentUserId) {
+      const uploaded = await uploadAvatar(currentUserId, avatarUri);
+      if (uploaded) avatarUrl = uploaded;
+    }
+
     const ok = await onSave({
       displayName: name.trim(),
       comment: comment.trim(),
@@ -112,6 +142,7 @@ function ProfileEditModal({ visible, onClose, profile, onSave }) {
       birthday: birthday || null,
       bio: bio.trim(),
       privateTopics: privateTopics.trim(),
+      avatarUrl,
     });
     setSaving(false);
     if (ok) onClose();
@@ -138,6 +169,26 @@ function ProfileEditModal({ visible, onClose, profile, onSave }) {
           >
             <View style={s.mhandle} />
             <Text style={s.modalTitle}>{t('me_edit_title')}</Text>
+
+            {/* アバター選択 */}
+            <TouchableOpacity style={{ alignSelf: 'center', marginBottom: 20 }} onPress={handlePickImage}>
+              {(avatarUri || currentAvatar) ? (
+                <View>
+                  <Image source={{ uri: avatarUri || currentAvatar }} style={{ width: 80, height: 80, borderRadius: 40, borderWidth: 2, borderColor: C.bm }} />
+                  <View style={{ position: 'absolute', bottom: 0, right: 0, width: 24, height: 24, borderRadius: 12, backgroundColor: C.p, alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 12, color: C.white }}>✎</Text>
+                  </View>
+                </View>
+              ) : (
+                <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: C.pp, borderWidth: 2, borderColor: C.bm, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 28, color: C.p }}>{name?.[0]?.toUpperCase() || '?'}</Text>
+                  <View style={{ position: 'absolute', bottom: 0, right: 0, width: 24, height: 24, borderRadius: 12, backgroundColor: C.p, alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 12, color: C.white }}>+</Text>
+                  </View>
+                </View>
+              )}
+              <Text style={{ fontSize: 11, color: C.tm, textAlign: 'center', marginTop: 6 }}>{t('me_edit_photo')}</Text>
+            </TouchableOpacity>
 
             <Text style={s.editLabel}>{t('profile_name')}</Text>
             <TextInput style={s.editInput} value={name} onChangeText={setName}
@@ -346,6 +397,7 @@ export default function MeScreen() {
         age: fields.age,
         birthday: fields.birthday,
         private_topics: fields.privateTopics,
+        avatar_url: fields.avatarUrl || prev?.avatar_url,
       }));
     }
     return ok;
@@ -372,6 +424,7 @@ export default function MeScreen() {
         onClose={() => setShowEditProfile(false)}
         profile={profile}
         onSave={handleSaveProfile}
+        currentUserId={currentUserId}
       />
 
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
@@ -408,7 +461,7 @@ export default function MeScreen() {
 
         {/* Hero */}
         <View style={s.hero}>
-          <UserIcon name={userName} size={72} />
+          <UserIcon name={userName} size={72} imageUrl={profile?.avatar_url || null} />
           <View style={{ flex: 1 }}>
             {elementInfo ? (
               <View style={[s.elBadge, { backgroundColor: elementInfo.bg, borderColor: elementInfo.border }]}>

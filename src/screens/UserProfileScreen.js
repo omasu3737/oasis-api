@@ -123,7 +123,7 @@ export default function UserProfileScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={s.hero}>
-          <UserIcon name={displayName} size={60} />
+          <UserIcon name={displayName} size={60} imageUrl={profile?.avatar_url || null} />
           <View style={{ marginLeft: 14 }}>
             {elementInfo ? (
               <View style={[s.elBadge, { backgroundColor: elementInfo.bg, borderColor: elementInfo.border }]}>

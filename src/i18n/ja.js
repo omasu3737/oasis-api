@@ -110,6 +110,8 @@ export default {
   me_edit_save_failed: '保存に失敗しました',
   me_edit_saving: '保存中...',
   me_edit_save: '保存する',
+  me_edit_photo: '写真を変更',
+  me_edit_photo_permission: 'フォトライブラリへのアクセスを許可してください',
   me_edit_name_placeholder: 'あなたの名前',
   me_edit_age_placeholder: '例：28',
   me_edit_birthday_placeholder: '例：1998-03-15',
@@ -150,6 +152,8 @@ export default {
   talk_accept: '許可',
   talk_reject: '拒否',
   talk_no_requests: '新しいリクエストはありません',
+  talk_search_placeholder: '名前で検索...',
+  talk_search_hint: '名前を入力して検索してください',
 
   // AIチャット
   chat_placeholder: '今考えていることを...',

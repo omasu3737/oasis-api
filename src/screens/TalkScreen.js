@@ -10,8 +10,9 @@ import { useTheme } from '../context/ThemeContext';
 import { useI18n } from '../i18n';
 import { getCurrentUser } from '../services/auth';
 import { getLatestDMs } from '../services/dm';
-import { acceptFriendRequest, getFriends, getPendingRequests, rejectFriendRequest } from '../services/friends';
+import { acceptFriendRequest, getFriends, getPendingRequests, rejectFriendRequest, sendFriendRequest } from '../services/friends';
 import { loadProfile } from '../services/profile';
+import { supabase } from '../supabase';
 
 export default function TalkScreen() {
   const { colors: C } = useTheme();
@@ -23,6 +24,7 @@ export default function TalkScreen() {
   const [loading, setLoading] = useState(true);
   const [showMenu, setShowMenu] = useState(false);
   const [showRequests, setShowRequests] = useState(false);
+  const [showAddFriend, setShowAddFriend] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -193,8 +195,8 @@ export default function TalkScreen() {
           <View style={s.modalContent}>
             <View style={s.mhandle} />
             <Text style={s.modalTitle}>{t('talk_menu')}</Text>
-            <TouchableOpacity style={s.modalItem} onPress={() => { setShowMenu(false); /* TODO: friend add */ }}>
-              <View style={s.modalIcon}><Text style={{ fontSize: 16 }}>👤+</Text></View>
+            <TouchableOpacity style={s.modalItem} onPress={() => { setShowMenu(false); setTimeout(() => setShowAddFriend(true), 300); }}>
+              <View style={s.modalIcon}><Text style={{ fontSize: 16 }}>👤</Text></View>
               <View><Text style={s.modalLabel}>{t('talk_add_friend')}</Text><Text style={s.modalSub}>{t('talk_add_friend_sub')}</Text></View>
             </TouchableOpacity>
             <TouchableOpacity style={s.modalItem} onPress={() => { setShowMenu(false); /* TODO: group */ }}>
@@ -237,7 +239,125 @@ export default function TalkScreen() {
         </TouchableOpacity>
       </Modal>
 
+      {/* フレンド追加モーダル */}
+      <AddFriendModal
+        visible={showAddFriend}
+        onClose={() => setShowAddFriend(false)}
+        currentUserId={currentUserId}
+        onRequestSent={loadData}
+        C={C}
+        t={t}
+        s={s}
+      />
+
     </SafeAreaView>
+  );
+}
+
+function AddFriendModal({ visible, onClose, currentUserId, onRequestSent, C, t, s }) {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [sentIds, setSentIds] = useState([]);
+
+  async function doSearch() {
+    if (!query.trim()) return;
+    setSearching(true);
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, display_name, avatar_url')
+        .ilike('display_name', `%${query.trim()}%`)
+        .neq('id', currentUserId)
+        .limit(10);
+      setResults(data || []);
+    } catch (e) {
+      setResults([]);
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  async function handleSendRequest(userId) {
+    const ok = await sendFriendRequest(currentUserId, userId);
+    if (ok) {
+      setSentIds(prev => [...prev, userId]);
+      onRequestSent();
+    } else {
+      Alert.alert(t('error'), t('user_send_failed'));
+    }
+  }
+
+  function handleClose() {
+    setQuery('');
+    setResults([]);
+    setSentIds([]);
+    onClose();
+  }
+
+  return (
+    <Modal transparent visible={visible} animationType="slide" onRequestClose={handleClose}>
+      <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={handleClose}>
+        <View style={[s.modalContent, { maxHeight: '75%' }]} onStartShouldSetResponder={() => true}>
+          <View style={s.mhandle} />
+          <Text style={s.modalTitle}>{t('talk_add_friend')}</Text>
+
+          {/* 検索バー */}
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+            <TextInput
+              style={[s.searchInput, { flex: 1 }]}
+              placeholder={t('talk_search_placeholder')}
+              placeholderTextColor={C.tm}
+              value={query}
+              onChangeText={setQuery}
+              onSubmitEditing={doSearch}
+              returnKeyType="search"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <TouchableOpacity style={s.searchBtn} onPress={doSearch}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: C.white }}>{t('search')}</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* 結果 */}
+          <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 320 }}>
+            {searching ? (
+              <View style={{ alignItems: 'center', paddingVertical: 20 }}>
+                <ActivityIndicator color={C.p} />
+              </View>
+            ) : results.length > 0 ? (
+              results.map(u => (
+                <View key={u.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.bd }}>
+                  <UserIcon name={u.display_name} size={42} imageUrl={u.avatar_url} />
+                  <Text style={{ flex: 1, fontSize: 14, fontWeight: '500', color: C.t1 }}>{u.display_name}</Text>
+                  {sentIds.includes(u.id) ? (
+                    <View style={{ paddingHorizontal: 12, paddingVertical: 6, backgroundColor: C.pp, borderRadius: 10 }}>
+                      <Text style={{ fontSize: 12, color: C.tm }}>{t('user_pending_sent')}</Text>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={{ paddingHorizontal: 12, paddingVertical: 6, backgroundColor: C.p, borderRadius: 10 }}
+                      onPress={() => handleSendRequest(u.id)}
+                    >
+                      <Text style={{ fontSize: 12, color: C.white }}>{t('user_add_friend')}</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ))
+            ) : query.trim() ? (
+              <Text style={{ fontSize: 13, color: C.tm, textAlign: 'center', paddingVertical: 20 }}>
+                {t('resonance_no_users')}
+              </Text>
+            ) : (
+              <Text style={{ fontSize: 12, color: C.tm, textAlign: 'center', paddingVertical: 20 }}>
+                {t('talk_search_hint')}
+              </Text>
+            )}
+          </ScrollView>
+        </View>
+      </TouchableOpacity>
+    </Modal>
   );
 }
 
@@ -263,6 +383,9 @@ function getStyles(C) {
     emptyArea: { paddingVertical: 32, paddingHorizontal: 24, alignItems: 'center' },
     emptyTitle: { fontSize: 13, fontWeight: '500', color: C.t2, marginBottom: 4 },
     emptySub: { fontSize: 11, color: C.tm, lineHeight: 18, textAlign: 'center' },
+    // Search
+    searchInput: { backgroundColor: C.inputBg, borderWidth: 1, borderColor: C.bd, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10, fontSize: 13, color: C.t1 },
+    searchBtn: { paddingHorizontal: 16, paddingVertical: 10, backgroundColor: C.p, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
     // Modal
     modalOverlay: { flex: 1, backgroundColor: C.overlay, justifyContent: 'flex-end' },
     modalContent: { backgroundColor: C.card, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40 },

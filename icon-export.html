@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>OASIS Icon Export</title>
+<style>
+  body { background: #1a1a2e; color: #eee; font-family: 'Segoe UI', sans-serif; padding: 40px; }
+  h1 { text-align: center; color: #00e8ff; margin-bottom: 10px; }
+  .subtitle { text-align: center; color: #888; margin-bottom: 40px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; max-width: 1200px; margin: 0 auto; }
+  .card { background: #16213e; border-radius: 16px; padding: 24px; text-align: center; }
+  .card h3 { color: #ff58a0; margin: 0 0 4px; }
+  .card .desc { color: #888; font-size: 13px; margin-bottom: 16px; }
+  .card canvas { border: 1px solid #333; border-radius: 8px; max-width: 100%; background: repeating-conic-gradient(#2a2a2a 0% 25%, #222 0% 50%) 50% / 16px 16px; }
+  .card a { display: inline-block; margin-top: 14px; padding: 10px 28px; background: linear-gradient(135deg, #00e8ff, #ff58a0); color: #fff; text-decoration: none; border-radius: 8px; font-weight: bold; transition: opacity 0.2s; }
+  .card a:hover { opacity: 0.85; }
+  .status { text-align: center; margin-top: 30px; color: #0f0; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<h1>OASIS Icon Export</h1>
+<p class="subtitle">Click each button to download the PNG file</p>
+
+<div class="grid">
+  <div class="card">
+    <h3>icon.png</h3>
+    <div class="desc">1024x1024 &mdash; App icon (white bg + rounded rect + droplet)</div>
+    <canvas id="c-icon" width="1024" height="1024"></canvas><br>
+    <a id="dl-icon" href="#" download="icon.png">Download icon.png</a>
+  </div>
+  <div class="card">
+    <h3>splash-icon.png</h3>
+    <div class="desc">200x200 &mdash; Splash screen icon</div>
+    <canvas id="c-splash" width="200" height="200"></canvas><br>
+    <a id="dl-splash" href="#" download="splash-icon.png">Download splash-icon.png</a>
+  </div>
+  <div class="card">
+    <h3>favicon.png</h3>
+    <div class="desc">48x48 &mdash; Web favicon</div>
+    <canvas id="c-favicon" width="48" height="48"></canvas><br>
+    <a id="dl-favicon" href="#" download="favicon.png">Download favicon.png</a>
+  </div>
+  <div class="card">
+    <h3>android-icon-foreground.png</h3>
+    <div class="desc">1024x1024 &mdash; Droplet only on transparent background (for adaptive icon)</div>
+    <canvas id="c-android" width="1024" height="1024"></canvas><br>
+    <a id="dl-android" href="#" download="android-icon-foreground.png">Download android-icon-foreground.png</a>
+  </div>
+</div>
+
+<p class="status" id="status">Rendering...</p>
+
+<script>
+// Full SVG markup for the complete icon (white bg + droplet)
+const fullSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="mg" x1="0.48" y1="0" x2="0.52" y2="1">
+      <stop offset="0%" stop-color="#00e8ff"/>
+      <stop offset="10%" stop-color="#00d8ff"/>
+      <stop offset="22%" stop-color="#20b8f8"/>
+      <stop offset="34%" stop-color="#4898f0"/>
+      <stop offset="44%" stop-color="#6878e4"/>
+      <stop offset="54%" stop-color="#8858d8"/>
+      <stop offset="64%" stop-color="#9e44cc"/>
+      <stop offset="74%" stop-color="#b840b8"/>
+      <stop offset="84%" stop-color="#d848a0"/>
+      <stop offset="92%" stop-color="#ee4890"/>
+      <stop offset="100%" stop-color="#ff58a0"/>
+    </linearGradient>
+    <linearGradient id="hlL" x1="0" y1="0.1" x2="0.8" y2="0.6">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.55)"/>
+      <stop offset="30%" stop-color="rgba(255,255,255,0.15)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </linearGradient>
+    <linearGradient id="hlR" x1="1" y1="0" x2="0.2" y2="0.8">
+      <stop offset="0%" stop-color="rgba(0,232,255,0.3)"/>
+      <stop offset="20%" stop-color="rgba(0,220,255,0.06)"/>
+      <stop offset="100%" stop-color="rgba(0,220,255,0)"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur"/>
+      <feColorMatrix in="blur" type="saturate" values="1.5" result="sat"/>
+      <feMerge><feMergeNode in="sat"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="shadow" x="-20%" y="-10%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="15" flood-color="#9040b0" flood-opacity="0.18"/>
+    </filter>
+    <path id="drop" d="M 528 100 C 540 150 585 270 618 360 C 675 500 700 590 685 680 C 665 780 595 870 505 875 C 405 880 330 820 305 730 C 280 640 290 555 335 450 C 390 325 505 170 528 100 Z"/>
+    <clipPath id="dropClip"><use href="#drop"/></clipPath>
+  </defs>
+  <rect width="1024" height="1024" rx="180" fill="#ffffff"/>
+  <g filter="url(#shadow)"><use href="#drop" fill="url(#mg)"/></g>
+  <g filter="url(#glow)"><use href="#drop" fill="url(#mg)"/></g>
+  <g clip-path="url(#dropClip)">
+    <ellipse cx="410" cy="430" rx="100" ry="280" fill="url(#hlL)" transform="rotate(-6 410 430)"/>
+    <ellipse cx="445" cy="280" rx="18" ry="28" fill="rgba(255,255,255,0.6)"/>
+    <ellipse cx="432" cy="338" rx="9" ry="14" fill="rgba(255,255,255,0.32)"/>
+    <ellipse cx="580" cy="320" rx="45" ry="130" fill="url(#hlR)" transform="rotate(8 580 320)"/>
+    <ellipse cx="500" cy="800" rx="95" ry="22" fill="rgba(255,255,255,0.04)"/>
+  </g>
+</svg>`;
+
+// SVG for android foreground: droplet only, no background rect, transparent
+const androidSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="mg2" x1="0.48" y1="0" x2="0.52" y2="1">
+      <stop offset="0%" stop-color="#00e8ff"/>
+      <stop offset="10%" stop-color="#00d8ff"/>
+      <stop offset="22%" stop-color="#20b8f8"/>
+      <stop offset="34%" stop-color="#4898f0"/>
+      <stop offset="44%" stop-color="#6878e4"/>
+      <stop offset="54%" stop-color="#8858d8"/>
+      <stop offset="64%" stop-color="#9e44cc"/>
+      <stop offset="74%" stop-color="#b840b8"/>
+      <stop offset="84%" stop-color="#d848a0"/>
+      <stop offset="92%" stop-color="#ee4890"/>
+      <stop offset="100%" stop-color="#ff58a0"/>
+    </linearGradient>
+    <linearGradient id="hlL2" x1="0" y1="0.1" x2="0.8" y2="0.6">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.55)"/>
+      <stop offset="30%" stop-color="rgba(255,255,255,0.15)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </linearGradient>
+    <linearGradient id="hlR2" x1="1" y1="0" x2="0.2" y2="0.8">
+      <stop offset="0%" stop-color="rgba(0,232,255,0.3)"/>
+      <stop offset="20%" stop-color="rgba(0,220,255,0.06)"/>
+      <stop offset="100%" stop-color="rgba(0,220,255,0)"/>
+    </linearGradient>
+    <filter id="glow2" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur"/>
+      <feColorMatrix in="blur" type="saturate" values="1.5" result="sat"/>
+      <feMerge><feMergeNode in="sat"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="shadow2" x="-20%" y="-10%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="15" flood-color="#9040b0" flood-opacity="0.18"/>
+    </filter>
+    <path id="drop2" d="M 528 100 C 540 150 585 270 618 360 C 675 500 700 590 685 680 C 665 780 595 870 505 875 C 405 880 330 820 305 730 C 280 640 290 555 335 450 C 390 325 505 170 528 100 Z"/>
+    <clipPath id="dropClip2"><use href="#drop2"/></clipPath>
+  </defs>
+  <g filter="url(#shadow2)"><use href="#drop2" fill="url(#mg2)"/></g>
+  <g filter="url(#glow2)"><use href="#drop2" fill="url(#mg2)"/></g>
+  <g clip-path="url(#dropClip2)">
+    <ellipse cx="410" cy="430" rx="100" ry="280" fill="url(#hlL2)" transform="rotate(-6 410 430)"/>
+    <ellipse cx="445" cy="280" rx="18" ry="28" fill="rgba(255,255,255,0.6)"/>
+    <ellipse cx="432" cy="338" rx="9" ry="14" fill="rgba(255,255,255,0.32)"/>
+    <ellipse cx="580" cy="320" rx="45" ry="130" fill="url(#hlR2)" transform="rotate(8 580 320)"/>
+    <ellipse cx="500" cy="800" rx="95" ry="22" fill="rgba(255,255,255,0.04)"/>
+  </g>
+</svg>`;
+
+function svgToImage(svgStr) {
+  return new Promise((resolve, reject) => {
+    const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = (e) => { URL.revokeObjectURL(url); reject(e); };
+    img.src = url;
+  });
+}
+
+function renderToCanvas(canvasId, img, size) {
+  const canvas = document.getElementById(canvasId);
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, size, size);
+  ctx.drawImage(img, 0, 0, size, size);
+  return canvas;
+}
+
+function setupDownload(linkId, canvas) {
+  const link = document.getElementById(linkId);
+  link.href = canvas.toDataURL('image/png');
+}
+
+async function exportAll() {
+  try {
+    const [fullImg, androidImg] = await Promise.all([
+      svgToImage(fullSvg),
+      svgToImage(androidSvg)
+    ]);
+
+    // icon.png 1024x1024
+    const c1 = renderToCanvas('c-icon', fullImg, 1024);
+    setupDownload('dl-icon', c1);
+
+    // splash-icon.png 200x200
+    const c2 = renderToCanvas('c-splash', fullImg, 200);
+    setupDownload('dl-splash', c2);
+
+    // favicon.png 48x48
+    const c3 = renderToCanvas('c-favicon', fullImg, 48);
+    setupDownload('dl-favicon', c3);
+
+    // android-icon-foreground.png 1024x1024 (droplet only, transparent)
+    const c4 = renderToCanvas('c-android', androidImg, 1024);
+    setupDownload('dl-android', c4);
+
+    document.getElementById('status').textContent = 'All icons rendered. Click the buttons to download.';
+  } catch (err) {
+    document.getElementById('status').textContent = 'Error: ' + err.message;
+    document.getElementById('status').style.color = '#f44';
+  }
+}
+
+exportAll();
+</script>
+
+</body>
+</html>
