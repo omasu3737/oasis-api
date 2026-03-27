@@ -97,6 +97,8 @@ export default {
   me_qa_pending: '{count}件未回答',
   me_qa_asked_by: '{count}人がこの質問をしました',
   me_qa_answer_placeholder: '回答を入力...',
+  me_qa_empty_title: 'まだ質問が届いていません',
+  me_qa_empty_hint: '他のユーザーがあなたのプロフィールを見て\n質問を送ると、ここに表示されます',
   me_qa_submit: '回答する',
   me_share: 'シェア',
   me_share_msg: 'OASISでAIと話して自分の性格を分析してみよう！\nhttps://play.google.com/store/apps/details?id=com.omasu.oasis',

@@ -382,7 +382,7 @@ function getStyles(C) {
       paddingHorizontal: 20, paddingTop: 20, paddingBottom: 14,
       borderBottomWidth: 1, borderBottomColor: C.bd,
     },
-    title: { fontSize: 26, fontWeight: '700', color: C.t1, letterSpacing: -0.5, marginBottom: 14 },
+    title: { fontSize: 26, fontWeight: '500', color: C.t1, letterSpacing: -0.5, marginBottom: 14 },
     searchRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
     searchInput: {
       flex: 1, backgroundColor: C.inputBg, borderWidth: 1, borderColor: C.bd,

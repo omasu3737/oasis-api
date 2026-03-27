@@ -453,12 +453,6 @@ export default function MeScreen() {
             <Text style={s.name}>{userName}</Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TouchableOpacity style={s.headerIcon} onPress={() => Share.share({
-              message: t('me_share_msg'),
-              title: 'OASIS',
-            })}>
-              <Text style={{ fontSize: 15 }}>↑</Text>
-            </TouchableOpacity>
             <TouchableOpacity style={s.headerIcon} onPress={() => setShowSettings(true)}>
               <Text style={{ fontSize: 15 }}>⚙️</Text>
             </TouchableOpacity>
@@ -669,11 +663,17 @@ export default function MeScreen() {
           <LockedCard icon="✍️" label={t('me_style')} hint={t('me_locked_10')} />
         )}
 
-        {/* Questions for You */}
-        {questions.length > 0 ? (
+        {/* Questions for You - 常に表示 */}
+        <Divider />
+        <SLabel text={t('me_qa')} sub={questions.filter(q => !q.answer_text).length > 0 ? t('me_qa_pending', { count: questions.filter(q => !q.answer_text).length }) : null} />
+        {questions.length === 0 ? (
+          <View style={s.qaEmptyCard}>
+            <Text style={{ fontSize: 28, marginBottom: 10 }}>💬</Text>
+            <Text style={s.qaEmptyTitle}>{t('me_qa_empty_title')}</Text>
+            <Text style={s.qaEmptyHint}>{t('me_qa_empty_hint')}</Text>
+          </View>
+        ) : (
           <>
-            <Divider />
-            <SLabel text={t('me_qa')} sub={t('me_qa_pending', { count: questions.filter(q => q.status === 'pending').length })} />
             {questions.map((q) => (
               <View key={q.id} style={s.qaCard}>
                 <Text style={s.qaQ}>Q. {q.question_text}</Text>
@@ -723,14 +723,17 @@ export default function MeScreen() {
               </View>
             ))}
           </>
-        ) : null}
+        )}
 
         <Divider />
 
         {/* Share / Preview */}
         <View style={{ paddingHorizontal: 24, marginBottom: 12, gap: 8 }}>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TouchableOpacity style={s.shareBtn}>
+            <TouchableOpacity
+              style={s.shareBtn}
+              onPress={() => Share.share({ message: t('me_share_msg'), title: 'OASIS' })}
+            >
               <Text style={s.shareBtnTxt}>{t('me_share')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.previewBtn}>
@@ -792,6 +795,9 @@ function getStyles(C) {
     lockedHint: { fontSize: 10, color: C.tm, marginTop: 1 },
     lockIcon: { opacity: 0.6 },
     // Q&A
+    qaEmptyCard: { marginHorizontal: 24, marginBottom: 12, alignItems: 'center', padding: 24, backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.bd },
+    qaEmptyTitle: { fontSize: 13, fontWeight: '600', color: C.t2, marginBottom: 6 },
+    qaEmptyHint: { fontSize: 12, color: C.tm, textAlign: 'center', lineHeight: 18 },
     qaCard: { marginHorizontal: 24, marginBottom: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.bd, borderRadius: 14, padding: 12 },
     qaQ: { fontSize: 12, fontWeight: '500', color: C.p },
     qaCount: { fontSize: 10, color: C.tm, marginTop: 4 },

@@ -97,6 +97,8 @@ export default {
   me_qa_pending: '{count} unanswered',
   me_qa_asked_by: '{count} people asked this',
   me_qa_answer_placeholder: 'Type your answer...',
+  me_qa_empty_title: 'No questions yet',
+  me_qa_empty_hint: 'When other users visit your profile and\nsend questions, they\'ll appear here',
   me_qa_submit: 'Answer',
   me_share: 'Share',
   me_share_msg: 'Try OASIS – AI analyzes your personality through conversation and finds truly compatible people!\nhttps://play.google.com/store/apps/details?id=com.omasu.oasis',

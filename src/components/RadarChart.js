@@ -37,7 +37,7 @@ export default function RadarChart({ scores }) {
   const s = useMemo(() => getStyles(C), [C]);
   const dataPoints = KEYS.map((k, i) => getPoint(i, (scores[k] || 0) / 100));
 
-  const gridColor = isDark ? '#2a1a40' : '#ece6ff';
+  const gridColor = isDark ? '#4a3870' : '#ece6ff';
   const fillStopA = isDark ? '#a87cef' : '#5a3fc0';
   const fillStopB = isDark ? '#5a3a8a' : '#c4b0f8';
   const strokeColor = isDark ? '#a87cef' : '#5a3fc0';
