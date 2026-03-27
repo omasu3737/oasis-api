@@ -1,5 +1,5 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator, Alert, Modal, ScrollView, StyleSheet,
   Text, TextInput, TouchableOpacity, View
@@ -8,26 +8,31 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import RadarChart from '../components/RadarChart';
 import TraitBar from '../components/TraitBar';
 import UserIcon from '../components/UserIcon';
+import { useTheme } from '../context/ThemeContext';
+import { useI18n } from '../i18n';
 import { getCurrentUser } from '../services/auth';
 import { sendFriendRequest, getFriendshipStatus } from '../services/friends';
 import { loadProfile } from '../services/profile';
 import { getAnsweredQuestions, sendQuestion } from '../services/questions';
 import { reportUser, blockUser } from '../services/report';
-import { C, ELEMENT_COLORS } from '../theme';
+import { ELEMENT_COLORS } from '../theme';
 import { supabase } from '../supabase';
 
-const SUGGEST_QUESTIONS = [
-  'どんなことに興味がありますか？',
-  '大切にしている価値観は？',
-  '最近ハマっていることは？',
-  '休日はどう過ごしていますか？',
-  'おすすめの本や映画はありますか？',
-];
-
 export default function UserProfileScreen() {
+  const { colors: C, elementColors } = useTheme();
+  const { t } = useI18n();
+  const s = useMemo(() => getStyles(C), [C]);
   const navigation = useNavigation();
   const route = useRoute();
   const { userId, userName: initialName } = route.params;
+
+  const SUGGEST_QUESTIONS = [
+    t('user_suggest_q1'),
+    t('user_suggest_q2'),
+    t('user_suggest_q3'),
+    t('user_suggest_q4'),
+    t('user_suggest_q5'),
+  ];
 
   const [profile, setProfile] = useState(null);
   const [persona, setPersona] = useState(null);
@@ -75,7 +80,7 @@ export default function UserProfileScreen() {
     if (ok) {
       setFriendship({ status: 'pending', isSender: true });
     } else {
-      Alert.alert('エラー', '送信に失敗しました');
+      Alert.alert(t('error'), t('user_send_failed'));
     }
   }
 
@@ -87,14 +92,14 @@ export default function UserProfileScreen() {
     if (ok) {
       setQText('');
       setShowQModal(false);
-      Alert.alert('送信完了', '質問を送りました');
+      Alert.alert(t('user_send_complete'), t('user_question_sent'));
     } else {
-      Alert.alert('エラー', '送信に失敗しました');
+      Alert.alert(t('error'), t('user_send_failed'));
     }
   }
 
-  const displayName = profile?.display_name || initialName || 'ユーザー';
-  const elementInfo = persona ? ELEMENT_COLORS[persona.element_type] : null;
+  const displayName = profile?.display_name || initialName || t('user_default_name');
+  const elementInfo = persona ? elementColors[persona.element_type] : null;
 
   if (loading) {
     return (
@@ -106,7 +111,6 @@ export default function UserProfileScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
-      {/* ヘッダー */}
       <View style={s.nav}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={s.back}>‹</Text>
@@ -118,14 +122,13 @@ export default function UserProfileScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* ヒーロー */}
         <View style={s.hero}>
           <UserIcon name={displayName} size={60} />
           <View style={{ marginLeft: 14 }}>
             {elementInfo ? (
               <View style={[s.elBadge, { backgroundColor: elementInfo.bg, borderColor: elementInfo.border }]}>
                 <Text style={[s.elBadgeTxt, { color: elementInfo.text }]}>
-                  {elementInfo.emoji} {persona.element_type}型
+                  {elementInfo.emoji} {persona.element_type}{t('user_element_suffix')}
                 </Text>
               </View>
             ) : null}
@@ -136,46 +139,42 @@ export default function UserProfileScreen() {
           </View>
         </View>
 
-        {/* 共鳴ポイント（相性テキスト） */}
         {persona?.compatibility_text ? (
           <View style={s.resonanceCard}>
-            <Text style={s.resonanceTitle}>✦ あなたとの共鳴ポイント</Text>
+            <Text style={s.resonanceTitle}>✦ {t('user_resonance')}</Text>
             <Text style={s.resonanceText}>{persona.compatibility_text}</Text>
           </View>
         ) : null}
 
-        {/* ○○のAIに聞いてみる */}
         <TouchableOpacity
           style={s.askBtn}
           onPress={() => navigation.navigate('AskAI', { userId, userName: displayName, persona })}
         >
-          <Text style={s.askBtnTxt}>{displayName} の AI に聞いてみる</Text>
+          <Text style={s.askBtnTxt}>{t('user_ask_ai', { name: displayName })}</Text>
         </TouchableOpacity>
 
-        {/* 質問する + フレンドリクエスト */}
         <View style={{ flexDirection: 'row', gap: 8, marginHorizontal: 24, marginBottom: 14 }}>
           <TouchableOpacity style={[s.subBtn, { flex: 1 }]} onPress={() => setShowQModal(true)}>
-            <Text style={s.subBtnTxt}>質問する</Text>
+            <Text style={s.subBtnTxt}>{t('user_question')}</Text>
           </TouchableOpacity>
           {friendship.status === 'none' ? (
             <TouchableOpacity style={[s.subBtn, { flex: 1 }]} onPress={handleFriendRequest}>
-              <Text style={s.subBtnTxt}>フレンド申請</Text>
+              <Text style={s.subBtnTxt}>{t('user_add_friend')}</Text>
             </TouchableOpacity>
           ) : friendship.status === 'pending' ? (
             <View style={[s.subBtn, { flex: 1, opacity: 0.5 }]}>
-              <Text style={s.subBtnTxt}>{friendship.isSender ? '申請済み ✓' : '受信中'}</Text>
+              <Text style={s.subBtnTxt}>{friendship.isSender ? t('user_pending_sent') : t('user_pending_received')}</Text>
             </View>
           ) : friendship.status === 'accepted' ? (
             <TouchableOpacity
               style={[s.subBtn, { flex: 1 }]}
               onPress={() => navigation.navigate('DM', { friendId: userId, friendName: displayName })}
             >
-              <Text style={s.subBtnTxt}>メッセージ</Text>
+              <Text style={s.subBtnTxt}>{t('user_message')}</Text>
             </TouchableOpacity>
           ) : null}
         </View>
 
-        {/* 回答済みの質問 */}
         {answeredQs.length > 0 ? (
           <View style={s.section}>
             <Text style={s.sLabel}>Q&A</Text>
@@ -184,39 +183,37 @@ export default function UserProfileScreen() {
                 <Text style={s.qaQ}>Q. {q.question_text}</Text>
                 <Text style={s.qaA}>{q.answer_text}</Text>
                 {q.source_count > 1 ? (
-                  <Text style={s.qaCount}>{q.source_count}人がこの質問をしました</Text>
+                  <Text style={s.qaCount}>{t('user_qa_count', { count: q.source_count })}</Text>
                 ) : null}
               </View>
             ))}
           </View>
         ) : null}
 
-        {/* ビジョン（自己紹介） */}
         {profile?.bio ? (
           <View style={s.section}>
-            <Text style={s.sLabel}>ビジョン</Text>
+            <Text style={s.sLabel}>{t('user_vision')}</Text>
             <View style={s.visionCard}>
               <Text style={s.visionText}>{profile.bio}</Text>
             </View>
           </View>
         ) : null}
 
-        {/* 人格レーダー */}
         {persona ? (
           <>
             <View style={s.section}>
-              <Text style={s.sLabel}>人格レーダー</Text>
+              <Text style={s.sLabel}>{t('user_radar')}</Text>
               <RadarChart scores={persona} />
             </View>
             <View style={s.section}>
-              <Text style={s.sLabel}>特性スコア</Text>
+              <Text style={s.sLabel}>{t('user_trait_scores')}</Text>
               <View style={{ paddingHorizontal: 24 }}>
                 {[
-                  ['深さ', persona.depth],
-                  ['意思', persona.will],
-                  ['行動', persona.action],
-                  ['共鳴', persona.resonance],
-                  ['安定', persona.stability],
+                  [t('trait_depth'), persona.depth],
+                  [t('trait_will'), persona.will],
+                  [t('trait_action'), persona.action],
+                  [t('trait_resonance'), persona.resonance],
+                  [t('trait_stability'), persona.stability],
                 ].map(([label, val]) => (
                   <TraitBar key={label} label={label} value={val || 0} />
                 ))}
@@ -225,13 +222,12 @@ export default function UserProfileScreen() {
           </>
         ) : null}
 
-        {/* 価値観バッジ */}
         {persona?.values_priority?.tags ? (
           <View style={s.section}>
-            <Text style={s.sLabel}>価値観</Text>
+            <Text style={s.sLabel}>{t('user_values')}</Text>
             <View style={s.badgeRow}>
-              {persona.values_priority.tags.map((t, i) => (
-                <View key={i} style={s.badge}><Text style={s.badgeTxt}>{t}</Text></View>
+              {persona.values_priority.tags.map((tag, i) => (
+                <View key={i} style={s.badge}><Text style={s.badgeTxt}>{tag}</Text></View>
               ))}
             </View>
           </View>
@@ -245,20 +241,20 @@ export default function UserProfileScreen() {
         <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setShowQModal(false)}>
           <View style={s.modalContent} onStartShouldSetResponder={() => true}>
             <View style={s.mhandle} />
-            <Text style={s.modalTitle}>{displayName} に質問する</Text>
-            <Text style={s.modalSub}>匿名で質問が送られます。相手が回答するとプロフィールに表示されます。</Text>
+            <Text style={s.modalTitle}>{t('user_question_modal_title', { name: displayName })}</Text>
+            <Text style={s.modalSub}>{t('user_question_modal_sub')}</Text>
 
             <TextInput
               style={s.qInput}
               value={qText}
               onChangeText={setQText}
-              placeholder="質問を入力..."
+              placeholder={t('user_question_placeholder')}
               placeholderTextColor={C.tm}
               multiline
               maxLength={200}
             />
 
-            <Text style={s.suggestLabel}>おすすめの質問</Text>
+            <Text style={s.suggestLabel}>{t('user_suggest_label')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
               <View style={{ flexDirection: 'row', gap: 6 }}>
                 {SUGGEST_QUESTIONS.map((q, i) => (
@@ -274,7 +270,7 @@ export default function UserProfileScreen() {
               onPress={handleSendQuestion}
               disabled={!qText.trim() || qSending}
             >
-              <Text style={s.qSendTxt}>{qSending ? '送信中...' : '質問を送る'}</Text>
+              <Text style={s.qSendTxt}>{qSending ? t('user_sending') : t('user_send_question')}</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -290,17 +286,17 @@ export default function UserProfileScreen() {
               onPress={() => {
                 setShowMoreMenu(false);
                 Alert.alert(
-                  'ブロック',
-                  `${displayName}をブロックしますか？\nブロックすると相手はあなたのプロフィールを見られなくなります。`,
+                  t('user_block'),
+                  t('user_block_confirm', { name: displayName }),
                   [
-                    { text: 'キャンセル', style: 'cancel' },
+                    { text: t('cancel'), style: 'cancel' },
                     {
-                      text: 'ブロックする', style: 'destructive',
+                      text: t('user_block_action'), style: 'destructive',
                       onPress: async () => {
                         if (!currentUserId) return;
                         const ok = await blockUser(currentUserId, userId);
                         if (ok) {
-                          Alert.alert('完了', 'ブロックしました');
+                          Alert.alert(t('done'), t('user_blocked'));
                           navigation.goBack();
                         }
                       }
@@ -310,39 +306,39 @@ export default function UserProfileScreen() {
               }}
             >
               <Text style={{ fontSize: 16 }}>🚫</Text>
-              <Text style={s.moreItemTxt}>ブロックする</Text>
+              <Text style={s.moreItemTxt}>{t('user_block_action')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={s.moreItem}
               onPress={() => {
                 setShowMoreMenu(false);
                 Alert.alert(
-                  '通報',
-                  '通報する理由を選んでください',
+                  t('user_report'),
+                  t('user_report_reason'),
                   [
-                    { text: 'キャンセル', style: 'cancel' },
+                    { text: t('cancel'), style: 'cancel' },
                     {
-                      text: '不適切なコンテンツ',
+                      text: t('user_report_inappropriate'),
                       onPress: async () => {
                         if (!currentUserId) return;
-                        await reportUser(currentUserId, userId, '不適切なコンテンツ');
-                        Alert.alert('完了', '通報を受け付けました。ご報告ありがとうございます。');
+                        await reportUser(currentUserId, userId, t('user_report_inappropriate'));
+                        Alert.alert(t('done'), t('user_report_thanks'));
                       }
                     },
                     {
-                      text: '嫌がらせ・迷惑行為',
+                      text: t('user_report_harassment'),
                       onPress: async () => {
                         if (!currentUserId) return;
-                        await reportUser(currentUserId, userId, '嫌がらせ・迷惑行為');
-                        Alert.alert('完了', '通報を受け付けました。ご報告ありがとうございます。');
+                        await reportUser(currentUserId, userId, t('user_report_harassment'));
+                        Alert.alert(t('done'), t('user_report_thanks'));
                       }
                     },
                     {
-                      text: 'なりすまし',
+                      text: t('user_report_impersonation'),
                       onPress: async () => {
                         if (!currentUserId) return;
-                        await reportUser(currentUserId, userId, 'なりすまし');
-                        Alert.alert('完了', '通報を受け付けました。ご報告ありがとうございます。');
+                        await reportUser(currentUserId, userId, t('user_report_impersonation'));
+                        Alert.alert(t('done'), t('user_report_thanks'));
                       }
                     },
                   ]
@@ -350,7 +346,7 @@ export default function UserProfileScreen() {
               }}
             >
               <Text style={{ fontSize: 16 }}>⚠️</Text>
-              <Text style={[s.moreItemTxt, { color: '#e05050' }]}>通報する</Text>
+              <Text style={[s.moreItemTxt, { color: C.err }]}>{t('user_report_action')}</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -359,7 +355,7 @@ export default function UserProfileScreen() {
   );
 }
 
-const s = StyleSheet.create({
+const getStyles = (C) => StyleSheet.create({
   nav: { paddingHorizontal: 18, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 8, borderBottomWidth: 1, borderBottomColor: C.bd },
   back: { fontSize: 28, color: C.p, paddingRight: 4 },
   navTitle: { fontSize: 14, fontWeight: '500', color: C.t1 },
@@ -368,11 +364,11 @@ const s = StyleSheet.create({
   elBadgeTxt: { fontSize: 10, fontWeight: '500' },
   name: { fontSize: 20, fontWeight: '500', color: C.t1, marginBottom: 2 },
   typeName: { fontSize: 12, color: C.p },
-  resonanceCard: { marginHorizontal: 24, marginBottom: 14, borderRadius: 16, padding: 14, backgroundColor: '#f5f0ff', borderWidth: 1, borderColor: C.pm },
+  resonanceCard: { marginHorizontal: 24, marginBottom: 14, borderRadius: 16, padding: 14, backgroundColor: C.pp, borderWidth: 1, borderColor: C.pm },
   resonanceTitle: { fontSize: 10, color: C.p, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 },
   resonanceText: { fontSize: 12, color: C.t1, lineHeight: 20 },
   askBtn: { marginHorizontal: 24, marginBottom: 10, padding: 14, backgroundColor: C.p, borderRadius: 16, alignItems: 'center' },
-  askBtnTxt: { fontSize: 14, fontWeight: '500', color: '#fff' },
+  askBtnTxt: { fontSize: 14, fontWeight: '500', color: C.white },
   subBtn: { padding: 12, backgroundColor: C.pp, borderWidth: 1, borderColor: C.bm, borderRadius: 16, alignItems: 'center' },
   subBtnTxt: { fontSize: 13, color: C.p },
   section: { marginBottom: 14 },
@@ -382,24 +378,21 @@ const s = StyleSheet.create({
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, paddingHorizontal: 24 },
   badge: { paddingHorizontal: 11, paddingVertical: 5, borderRadius: 12, backgroundColor: C.bs, borderWidth: 1, borderColor: C.bd },
   badgeTxt: { fontSize: 11, color: C.t2 },
-  // Q&A
-  qaCard: { marginHorizontal: 24, marginBottom: 8, backgroundColor: '#fff', borderWidth: 1, borderColor: C.bd, borderRadius: 14, padding: 12 },
+  qaCard: { marginHorizontal: 24, marginBottom: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.bd, borderRadius: 14, padding: 12 },
   qaQ: { fontSize: 12, fontWeight: '500', color: C.p, marginBottom: 6 },
   qaA: { fontSize: 12, color: C.t1, lineHeight: 18 },
   qaCount: { fontSize: 10, color: C.tm, marginTop: 6 },
-  // Modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40 },
+  modalOverlay: { flex: 1, backgroundColor: C.overlay, justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: C.modalBg, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40 },
   mhandle: { width: 36, height: 4, backgroundColor: C.bm, borderRadius: 2, alignSelf: 'center', marginBottom: 18 },
   modalTitle: { fontSize: 16, fontWeight: '500', color: C.t1, marginBottom: 4 },
   modalSub: { fontSize: 11, color: C.tm, marginBottom: 14, lineHeight: 18 },
-  qInput: { backgroundColor: C.pp, borderWidth: 1, borderColor: C.bm, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, fontSize: 13, color: C.t1, height: 80, textAlignVertical: 'top', marginBottom: 12 },
+  qInput: { backgroundColor: C.inputBg, borderWidth: 1, borderColor: C.bm, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, fontSize: 13, color: C.t1, height: 80, textAlignVertical: 'top', marginBottom: 12 },
   suggestLabel: { fontSize: 10, color: C.tm, marginBottom: 6 },
   suggestChip: { paddingHorizontal: 12, paddingVertical: 7, backgroundColor: C.bs, borderWidth: 1, borderColor: C.bd, borderRadius: 14 },
   suggestChipTxt: { fontSize: 11, color: C.t2 },
   qSendBtn: { padding: 14, backgroundColor: C.p, borderRadius: 16, alignItems: 'center' },
-  qSendTxt: { fontSize: 14, fontWeight: '500', color: '#fff' },
-  // More menu
+  qSendTxt: { fontSize: 14, fontWeight: '500', color: C.white },
   moreBtn: { padding: 6 },
   moreDots: { fontSize: 20, fontWeight: '700', color: C.t2, letterSpacing: 2 },
   moreItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: C.bd },

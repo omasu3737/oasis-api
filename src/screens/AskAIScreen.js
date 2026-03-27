@@ -1,16 +1,20 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator, FlatList, KeyboardAvoidingView, Platform,
   StyleSheet, Text, TextInput, TouchableOpacity, View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import UserIcon from '../components/UserIcon';
-import { C, ELEMENT_COLORS } from '../theme';
+import { useTheme } from '../context/ThemeContext';
+import { useI18n } from '../i18n';
 
 const API_URL = 'https://oasis-api-nine.vercel.app/api/ask';
 
 export default function AskAIScreen() {
+  const { colors: C, elementColors } = useTheme();
+  const { t } = useI18n();
+  const s = useMemo(() => getStyles(C), [C]);
   const navigation = useNavigation();
   const route = useRoute();
   const { userId, userName, persona } = route.params;
@@ -20,7 +24,7 @@ export default function AskAIScreen() {
   const [sending, setSending] = useState(false);
   const flatListRef = useRef(null);
 
-  const elementInfo = persona?.element_type ? ELEMENT_COLORS[persona.element_type] : null;
+  const elementInfo = persona?.element_type ? elementColors[persona.element_type] : null;
 
   async function handleSend() {
     const text = input.trim();
@@ -43,10 +47,10 @@ export default function AskAIScreen() {
       });
 
       const data = await response.json();
-      const aiText = data?.content?.[0]?.text || 'もう一度試してください';
+      const aiText = data?.content?.[0]?.text || t('ask_retry');
       setMessages(prev => [...prev, { role: 'assistant', content: aiText }]);
     } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: '通信エラーが発生しました' }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: t('ask_network_error') }]);
     } finally {
       setSending(false);
     }
@@ -60,7 +64,7 @@ export default function AskAIScreen() {
           <UserIcon name={userName} size={32} />
         ) : null}
         <View style={[s.bubble, isUser ? s.bubbleUser : s.bubbleAI]}>
-          <Text style={[s.bubbleTxt, isUser && { color: '#fff' }]}>{item.content}</Text>
+          <Text style={[s.bubbleTxt, isUser && { color: C.white }]}>{item.content}</Text>
         </View>
       </View>
     );
@@ -68,14 +72,13 @@ export default function AskAIScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
-      {/* ヘッダー */}
       <View style={s.nav}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={s.back}>‹</Text>
         </TouchableOpacity>
         <UserIcon name={userName} size={30} />
         <View style={{ flex: 1 }}>
-          <Text style={s.navName}>{userName} の AI</Text>
+          <Text style={s.navName}>{t('ask_nav_title', { name: userName })}</Text>
           {persona?.persona_type ? (
             <Text style={s.navType}>{persona.persona_type}</Text>
           ) : null}
@@ -89,19 +92,18 @@ export default function AskAIScreen() {
         )}
       </View>
 
-      {/* イントロ */}
       {messages.length === 0 ? (
         <View style={s.intro}>
           <UserIcon name={userName} size={56} />
-          <Text style={s.introTitle}>{userName} の デジタル分身</Text>
+          <Text style={s.introTitle}>{t('ask_ai_title', { name: userName })}</Text>
           <Text style={s.introSub}>
-            {userName}のAI会話データから生成された{'\n'}デジタル分身に質問してみましょう
+            {t('ask_intro_sub', { name: userName })}
           </Text>
           <View style={s.suggestRow}>
             {[
-              `${userName}さんの趣味は？`,
-              '大切にしていることは？',
-              '最近考えていることは？',
+              t('ask_suggest_hobby', { name: userName }),
+              t('ask_suggest_values'),
+              t('ask_suggest_thoughts'),
             ].map((q, i) => (
               <TouchableOpacity key={i} style={s.suggestBtn}
                 onPress={() => { setInput(q); }}>
@@ -122,25 +124,23 @@ export default function AskAIScreen() {
         />
       )}
 
-      {/* 送信中インジケーター */}
       {sending ? (
         <View style={s.typingRow}>
           <UserIcon name={userName} size={24} />
           <View style={s.typingDots}>
             <ActivityIndicator size="small" color={C.p} />
-            <Text style={s.typingTxt}>{userName}が考え中...</Text>
+            <Text style={s.typingTxt}>{t('ask_thinking', { name: userName })}</Text>
           </View>
         </View>
       ) : null}
 
-      {/* 入力欄 */}
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={s.inputRow}>
           <TextInput
             style={s.input}
             value={input}
             onChangeText={setInput}
-            placeholder={`${userName}に聞いてみる...`}
+            placeholder={t('ask_ai_placeholder', { name: userName })}
             placeholderTextColor={C.tm}
             multiline
             maxLength={300}
@@ -157,14 +157,14 @@ export default function AskAIScreen() {
           </TouchableOpacity>
         </View>
         <Text style={s.disclaimer}>
-          デジタル分身はAI生成です。本人の発言ではありません。
+          {t('ask_ai_disclaimer')}
         </Text>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-const s = StyleSheet.create({
+const getStyles = (C) => StyleSheet.create({
   nav: {
     paddingHorizontal: 14, paddingVertical: 10,
     flexDirection: 'row', alignItems: 'center', gap: 8,
@@ -178,7 +178,6 @@ const s = StyleSheet.create({
     borderRadius: 10, borderWidth: 1,
   },
   elBadgeTxt: { fontSize: 9, fontWeight: '500' },
-  // イントロ
   intro: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: 10 },
   introTitle: { fontSize: 16, fontWeight: '500', color: C.t1, marginTop: 4 },
   introSub: { fontSize: 12, color: C.tm, textAlign: 'center', lineHeight: 20 },
@@ -189,25 +188,22 @@ const s = StyleSheet.create({
     borderRadius: 14, alignItems: 'center',
   },
   suggestTxt: { fontSize: 12, color: C.p },
-  // メッセージ
   msgRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginBottom: 12 },
   msgRowUser: { flexDirection: 'row-reverse' },
   bubble: { maxWidth: '75%', borderRadius: 18, padding: 12 },
   bubbleUser: { backgroundColor: C.p, borderBottomRightRadius: 4 },
-  bubbleAI: { backgroundColor: '#fff', borderWidth: 1, borderColor: C.bd, borderBottomLeftRadius: 4 },
+  bubbleAI: { backgroundColor: C.card, borderWidth: 1, borderColor: C.bd, borderBottomLeftRadius: 4 },
   bubbleTxt: { fontSize: 13, color: C.t1, lineHeight: 20 },
-  // タイピング
   typingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 18, paddingBottom: 8 },
   typingDots: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   typingTxt: { fontSize: 11, color: C.tm },
-  // 入力
   inputRow: {
     flexDirection: 'row', alignItems: 'flex-end', gap: 8,
     paddingHorizontal: 14, paddingTop: 8, paddingBottom: 4,
     borderTopWidth: 1, borderTopColor: C.bd,
   },
   input: {
-    flex: 1, backgroundColor: C.pp, borderWidth: 1, borderColor: C.bm,
+    flex: 1, backgroundColor: C.inputBg, borderWidth: 1, borderColor: C.bm,
     borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10,
     fontSize: 13, color: C.t1, maxHeight: 100,
   },
@@ -215,7 +211,7 @@ const s = StyleSheet.create({
     width: 36, height: 36, borderRadius: 18,
     backgroundColor: C.p, alignItems: 'center', justifyContent: 'center',
   },
-  sendTxt: { fontSize: 18, color: '#fff', fontWeight: '600' },
+  sendTxt: { fontSize: 18, color: C.white, fontWeight: '600' },
   disclaimer: {
     fontSize: 9, color: C.tm, textAlign: 'center',
     paddingBottom: 8, paddingTop: 2,

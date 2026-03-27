@@ -1,7 +1,11 @@
+import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { C } from '../theme';
+import { useTheme } from '../context/ThemeContext';
 
 export default function EmptyCard({ icon, title, sub }) {
+  const { colors: C } = useTheme();
+  const s = useMemo(() => getStyles(C), [C]);
+
   return (
     <View style={s.card}>
       <Text style={s.icon}>{icon}</Text>
@@ -11,7 +15,7 @@ export default function EmptyCard({ icon, title, sub }) {
   );
 }
 
-const s = StyleSheet.create({
+const getStyles = (C) => StyleSheet.create({
   card: {
     marginHorizontal: 24, marginBottom: 12,
     backgroundColor: C.bs, borderWidth: 1.5, borderColor: C.bm,

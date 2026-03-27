@@ -1,7 +1,11 @@
+import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { C } from '../theme';
+import { useTheme } from '../context/ThemeContext';
 
 export default function TraitBar({ label, value }) {
+  const { colors: C } = useTheme();
+  const s = useMemo(() => getStyles(C), [C]);
+
   return (
     <View style={s.row}>
       <Text style={s.label}>{label}</Text>
@@ -13,7 +17,7 @@ export default function TraitBar({ label, value }) {
   );
 }
 
-const s = StyleSheet.create({
+const getStyles = (C) => StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 9 },
   label: { fontSize: 11, color: C.t2, width: 34 },
   bar: { flex: 1, height: 4, backgroundColor: C.pp, borderRadius: 2, overflow: 'hidden' },

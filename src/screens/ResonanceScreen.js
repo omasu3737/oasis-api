@@ -1,309 +1,399 @@
 import { useNavigation } from '@react-navigation/native';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator, ScrollView, StyleSheet, Text,
+  ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text,
   TextInput, TouchableOpacity, View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import UserIcon from '../components/UserIcon';
+import { useTheme } from '../context/ThemeContext';
+import { useI18n } from '../i18n';
 import { getCurrentUser } from '../services/auth';
 import { calcCategoryScores, calcResonanceScore, getBestCategory } from '../services/resonance';
 import { supabase } from '../supabase';
-import { C, ELEMENT_COLORS } from '../theme';
 
-const FILTERS = ['全員', '友人', '恋愛', '仕事'];
-const FILTER_KEYS = { '友人': 'friend', '恋愛': 'romance', '仕事': 'work' };
-
-function ScoreBadge({ score }) {
-  const color = score >= 75 ? '#e05050' : score >= 50 ? C.p : C.tm;
-  const bg = score >= 75 ? '#fff0f0' : score >= 50 ? C.pp : '#f5f5f5';
-  return (
-    <View style={[st.scoreBadge, { backgroundColor: bg, borderColor: color + '30' }]}>
-      <Text style={[st.scoreNum, { color }]}>{score}</Text>
-      <Text style={[st.scorePct, { color }]}>%</Text>
-    </View>
-  );
-}
-
-function CategoryTag({ label }) {
-  const colors = {
-    '友人': { bg: '#eef4ff', color: '#1a5fa8' },
-    '恋愛': { bg: '#fff0f0', color: '#c0392b' },
-    '仕事': { bg: '#fdf6ee', color: '#8a5a1a' },
+// Resonance level badge with color-coded ring
+function ResonanceBadge({ score, C }) {
+  const getColor = () => {
+    if (score >= 80) return '#e040fb';
+    if (score >= 65) return C.p;
+    if (score >= 50) return C.pl;
+    return C.tm;
   };
-  const c = colors[label] || { bg: C.pp, color: C.p };
+  const color = getColor();
+  const label = score >= 80 ? '✦' : score >= 65 ? '◆' : '◇';
+
   return (
-    <View style={[st.catTag, { backgroundColor: c.bg }]}>
-      <Text style={[st.catTagTxt, { color: c.color }]}>{label}向き</Text>
+    <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{
+        width: 52, height: 52, borderRadius: 26,
+        borderWidth: 2.5, borderColor: color,
+        alignItems: 'center', justifyContent: 'center',
+        backgroundColor: color + '15',
+      }}>
+        <Text style={{ fontSize: 17, fontWeight: '700', color, lineHeight: 20 }}>{score}</Text>
+        <Text style={{ fontSize: 8, color, fontWeight: '600', marginTop: -1 }}>%</Text>
+      </View>
+      <Text style={{ fontSize: 9, color, fontWeight: '600', marginTop: 3 }}>{label}</Text>
     </View>
   );
 }
 
-function UserCard({ user, personaData, profile, score, bestCategory, onPress }) {
-  const elementInfo = personaData?.element_type ? ELEMENT_COLORS[personaData.element_type] : null;
-  const displayName = profile?.display_name || user.name || 'ユーザー';
+// Category tag chip
+function CategoryChip({ label, catKey, isDark }) {
+  const colors = isDark
+    ? {
+        friend: { bg: '#1a2840', color: '#80b8ff' },
+        romance: { bg: '#2d1a1a', color: '#ff9090' },
+        work: { bg: '#2a2418', color: '#e0b070' },
+      }
+    : {
+        friend: { bg: '#eef4ff', color: '#1a5fa8' },
+        romance: { bg: '#fff0f0', color: '#c0392b' },
+        work: { bg: '#fdf6ee', color: '#8a5a1a' },
+      };
+  const c = colors[catKey] || { bg: '#f0f0f0', color: '#666' };
+  return (
+    <View style={{ paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8, backgroundColor: c.bg }}>
+      <Text style={{ fontSize: 10, fontWeight: '600', color: c.color }}>{label}</Text>
+    </View>
+  );
+}
+
+// User card with card styling
+function UserCard({ item, onPress, C, elementColors, isDark, t }) {
+  const { user, personaData, profile, score, bestCategory, bestCategoryKey } = item;
+  const displayName = profile?.display_name || user.name || t('resonance_default_user');
+  const elementInfo = personaData?.element_type ? elementColors[personaData.element_type] : null;
 
   return (
-    <TouchableOpacity style={st.userCard} onPress={onPress}>
-      <UserIcon name={displayName} size={46} />
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Text style={st.userName} numberOfLines={1}>{displayName}</Text>
-          {bestCategory ? <CategoryTag label={bestCategory} /> : null}
-        </View>
-        {personaData ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
-            <Text style={st.userType}>{personaData.persona_type}</Text>
-            {elementInfo && (
-              <Text style={[st.elMini, { color: elementInfo.text }]}>
-                {elementInfo.emoji} {personaData.element_type}
-              </Text>
-            )}
+    <TouchableOpacity
+      style={[st.card(C), { marginHorizontal: 16, marginBottom: 10 }]}
+      onPress={onPress}
+      activeOpacity={0.75}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+        {/* Avatar */}
+        <UserIcon name={displayName} size={50} />
+
+        {/* User info */}
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <Text style={{ fontSize: 15, fontWeight: '600', color: C.t1, flexShrink: 1 }} numberOfLines={1}>
+              {displayName}
+            </Text>
+            {bestCategory ? (
+              <CategoryChip label={bestCategory} catKey={bestCategoryKey} isDark={isDark} />
+            ) : null}
           </View>
-        ) : (
-          <Text style={st.userTypeMuted}>分析中...</Text>
-        )}
+
+          {personaData?.persona_type ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+              {elementInfo && (
+                <Text style={{ fontSize: 11 }}>{elementInfo.emoji}</Text>
+              )}
+              <Text style={{ fontSize: 12, color: C.p, fontWeight: '500' }}>
+                {personaData.persona_type}
+              </Text>
+              {elementInfo && (
+                <Text style={{ fontSize: 11, color: elementInfo.text }}>
+                  {personaData.element_type}
+                </Text>
+              )}
+            </View>
+          ) : (
+            <Text style={{ fontSize: 12, color: C.tm, marginTop: 4 }}>{t('resonance_analyzing')}</Text>
+          )}
+
+          {/* Mini trait bars */}
+          {personaData && (
+            <View style={{ flexDirection: 'row', gap: 4, marginTop: 6 }}>
+              {['depth', 'will', 'action', 'resonance', 'stability'].map(trait => (
+                <View key={trait} style={{ flex: 1 }}>
+                  <View style={{ height: 3, backgroundColor: C.bd, borderRadius: 2 }}>
+                    <View style={{
+                      height: 3, borderRadius: 2,
+                      backgroundColor: C.p + 'aa',
+                      width: `${personaData[trait] || 0}%`,
+                    }} />
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+
+        {/* Resonance badge */}
+        {score != null ? <ResonanceBadge score={score} C={C} /> : null}
       </View>
-      {score != null ? <ScoreBadge score={score} /> : null}
     </TouchableOpacity>
   );
 }
 
+const st = {
+  card: (C) => ({
+    backgroundColor: C.card,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: C.bd,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  }),
+};
+
 export default function ResonanceScreen() {
+  const { colors: C, elementColors, isDark } = useTheme();
+  const { t } = useI18n();
   const navigation = useNavigation();
   const [query, setQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState('全員');
+  const [activeFilter, setActiveFilter] = useState('all');
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [searched, setSearched] = useState(false);
+  const [myPersonaData, setMyPersonaData] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  async function doSearch() {
+  const FILTERS = [
+    { key: 'all', label: t('resonance_filter_all') },
+    { key: 'friend', label: t('resonance_friend') },
+    { key: 'romance', label: t('resonance_romance') },
+    { key: 'work', label: t('resonance_work') },
+  ];
+
+  const CATEGORY_LABELS = {
+    friend: t('resonance_friend_suited'),
+    romance: t('resonance_romance_suited'),
+    work: t('resonance_work_suited'),
+  };
+
+  const s = getStyles(C);
+
+  // Auto-load on mount
+  useEffect(() => { loadUsers(); }, []);
+
+  async function loadUsers(searchQuery = '', filterKey = 'all') {
     setLoading(true);
-    setSearched(true);
     try {
       const currentUser = await getCurrentUser();
+      if (!currentUser) { setLoading(false); return; }
 
-      // 自分のpersona_dataを取得
-      const { data: myPersonaData } = await supabase
+      const { data: myPD } = await supabase
         .from('persona_data')
         .select('depth, will, action, resonance, stability')
-        .eq('user_id', currentUser?.id)
+        .eq('user_id', currentUser.id)
         .single();
+      setMyPersonaData(myPD);
 
       const { data: personas } = await supabase
         .from('persona_data')
         .select('user_id, persona_type, element_type, depth, will, action, resonance, stability');
 
-      if (!personas || personas.length === 0) {
-        setUsers([]);
-        setLoading(false);
-        return;
-      }
+      if (!personas || personas.length === 0) { setUsers([]); setLoading(false); return; }
 
-      const userIds = personas
-        .map(p => p.user_id)
-        .filter(id => id !== currentUser?.id);
-
-      if (userIds.length === 0) {
-        setUsers([]);
-        setLoading(false);
-        return;
-      }
+      const userIds = personas.map(p => p.user_id).filter(id => id !== currentUser.id);
+      if (userIds.length === 0) { setUsers([]); setLoading(false); return; }
 
       const [{ data: userData }, { data: profiles }] = await Promise.all([
         supabase.from('users').select('id, name').in('id', userIds),
         supabase.from('profiles').select('id, display_name').in('id', userIds),
       ]);
 
-      if (!userData) {
-        setUsers([]);
-        setLoading(false);
-        return;
-      }
+      if (!userData) { setUsers([]); setLoading(false); return; }
 
       const personaMap = {};
       personas.forEach(p => { personaMap[p.user_id] = p; });
-
       const profileMap = {};
       (profiles || []).forEach(p => { profileMap[p.id] = p; });
 
       let result = userData.map(u => {
         const pd = personaMap[u.id] || null;
-        const score = calcResonanceScore(myPersonaData, pd);
-        const catScores = calcCategoryScores(myPersonaData, pd);
-        const bestCat = getBestCategory(catScores);
+        const score = calcResonanceScore(myPD, pd);
+        const catScores = calcCategoryScores(myPD, pd);
+        const bestCatKey = getBestCategory(catScores);
         return {
           user: u,
           personaData: pd,
           profile: profileMap[u.id] || null,
           score,
           catScores,
-          bestCategory: bestCat,
+          bestCategoryKey: bestCatKey,
+          bestCategory: bestCatKey ? CATEGORY_LABELS[bestCatKey] : null,
         };
       });
 
-      // テキスト検索
-      if (query.trim()) {
-        const q = query.toLowerCase();
+      // Search filter
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
         result = result.filter(r => {
           const name = r.profile?.display_name || r.user.name || '';
           return name.toLowerCase().includes(q);
         });
       }
 
-      // カテゴリフィルター
-      const filterKey = FILTER_KEYS[activeFilter];
-      if (filterKey && myPersonaData) {
-        // そのカテゴリのスコアが最も高いユーザーだけ表示
+      // Category filter
+      if (filterKey !== 'all' && myPD) {
         result = result.filter(r => {
           if (!r.catScores) return false;
           const catScore = r.catScores[filterKey];
           const otherScores = Object.entries(r.catScores)
             .filter(([k]) => k !== filterKey)
             .map(([, v]) => v);
-          // そのカテゴリが最も高いか、差が5以内なら含める
           return otherScores.every(other => catScore >= other - 5);
         });
       }
 
-      // 共鳴スコア降順ソート
       result.sort((a, b) => (b.score || 0) - (a.score || 0));
-
       setUsers(result);
+      setSearched(true);
     } catch (e) {
-      console.log('doSearch error:', e);
+      console.log('loadUsers error:', e);
       setUsers([]);
     } finally {
       setLoading(false);
     }
   }
 
+  function handleSearch() {
+    loadUsers(query, activeFilter);
+  }
+
+  function handleFilterChange(key) {
+    setActiveFilter(key);
+    loadUsers(query, key);
+  }
+
+  async function onRefresh() {
+    setRefreshing(true);
+    await loadUsers(query, activeFilter);
+    setRefreshing(false);
+  }
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
+      {/* Header */}
+      <View style={s.header}>
+        <Text style={s.title}>{t('tab_resonance')}</Text>
 
-      <View style={st.header}>
-        <Text style={st.title}>共鳴</Text>
-        <View style={st.searchRow}>
+        {/* Search bar */}
+        <View style={s.searchRow}>
           <TextInput
-            style={st.searchInput}
-            placeholder="ユーザー名を検索..."
+            style={s.searchInput}
+            placeholder={t('resonance_search_placeholder')}
             placeholderTextColor={C.tm}
             value={query}
             onChangeText={setQuery}
-            onSubmitEditing={doSearch}
+            onSubmitEditing={handleSearch}
             returnKeyType="search"
             autoCapitalize="none"
             autoCorrect={false}
           />
-          <TouchableOpacity style={st.searchBtn} onPress={doSearch}>
-            <Text style={st.searchBtnTxt}>検索</Text>
+          <TouchableOpacity style={s.searchBtn} onPress={handleSearch}>
+            <Text style={s.searchBtnTxt}>{t('search')}</Text>
           </TouchableOpacity>
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
+
+        {/* Filter chips */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 2 }}>
           <View style={{ flexDirection: 'row', gap: 6 }}>
             {FILTERS.map(f => (
               <TouchableOpacity
-                key={f}
-                style={[st.filter, activeFilter === f && st.filterOn]}
-                onPress={() => setActiveFilter(f)}
+                key={f.key}
+                style={[s.filter, activeFilter === f.key && s.filterOn]}
+                onPress={() => handleFilterChange(f.key)}
               >
-                <Text style={[st.filterTxt, activeFilter === f && st.filterTxtOn]}>{f}</Text>
+                <Text style={[s.filterTxt, activeFilter === f.key && s.filterTxtOn]}>{f.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </ScrollView>
       </View>
 
-      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+      {/* Content */}
+      <ScrollView
+        style={{ flex: 1 }}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingTop: 12, paddingBottom: 20 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.p} colors={[C.p]} />}
+      >
         {loading ? (
-          <View style={st.emptyArea}>
-            <ActivityIndicator color={C.p} />
+          <View style={s.emptyArea}>
+            <ActivityIndicator color={C.p} size="large" />
           </View>
         ) : users.length > 0 ? (
-          <View style={{ paddingTop: 4 }}>
+          <>
+            {/* Result count */}
+            <Text style={s.resultCount}>{users.length} {t('resonance_high')}</Text>
             {users.map((item, i) => (
               <UserCard
                 key={item.user.id || i}
-                user={item.user}
-                personaData={item.personaData}
-                profile={item.profile}
-                score={item.score}
-                bestCategory={item.bestCategory}
+                item={item}
+                C={C}
+                elementColors={elementColors}
+                isDark={isDark}
+                t={t}
                 onPress={() => navigation.navigate('UserProfile', {
                   userId: item.user.id,
                   userName: item.profile?.display_name || item.user.name,
                 })}
               />
             ))}
-          </View>
+          </>
         ) : (
-          <View style={st.emptyArea}>
-            <Text style={{ fontSize: 36, marginBottom: 12 }}>🔍</Text>
-            <Text style={st.emptyTitle}>
-              {searched
-                ? query ? `「${query}」は見つかりませんでした` : 'ユーザーが見つかりませんでした'
-                : 'まだユーザーが見つかりません'
-              }
+          <View style={s.emptyArea}>
+            <Text style={{ fontSize: 40, marginBottom: 14 }}>🔍</Text>
+            <Text style={s.emptyTitle}>
+              {searched && query
+                ? t('resonance_not_found_query', { query })
+                : t('resonance_no_users_yet')}
             </Text>
-            <Text style={st.emptySub}>
-              {searched
-                ? 'フィルターや検索ワードを変えてみてください'
-                : '他のユーザーが登録すると\n共鳴スコアとともに表示されます\n\n上の検索欄でユーザーを\n検索することもできます'
-              }
+            <Text style={s.emptySub}>
+              {searched && query
+                ? t('resonance_try_different')
+                : t('resonance_empty_hint')}
             </Text>
           </View>
         )}
       </ScrollView>
-
     </SafeAreaView>
   );
 }
 
-const st = StyleSheet.create({
-  header: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 12 },
-  title: { fontSize: 26, fontWeight: '500', color: C.t1, letterSpacing: -0.5, marginBottom: 12 },
-  searchRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  searchInput: {
-    flex: 1, backgroundColor: C.pp, borderWidth: 1, borderColor: C.bm,
-    borderRadius: 20, paddingHorizontal: 15, paddingVertical: 10,
-    fontSize: 13, color: C.t1,
-  },
-  searchBtn: {
-    paddingHorizontal: 16, paddingVertical: 10,
-    backgroundColor: C.p, borderRadius: 20,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  searchBtnTxt: { fontSize: 13, color: '#fff' },
-  filter: {
-    paddingHorizontal: 12, paddingVertical: 5, borderRadius: 18,
-    borderWidth: 1, borderColor: C.bm, backgroundColor: '#fff',
-  },
-  filterOn: { backgroundColor: C.p, borderColor: C.p },
-  filterTxt: { fontSize: 11, color: C.p },
-  filterTxtOn: { color: '#fff' },
-  userCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: 18, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: C.bd,
-    backgroundColor: '#fff',
-  },
-  userName: { fontSize: 14, fontWeight: '500', color: C.t1, flexShrink: 1 },
-  userType: { fontSize: 11, color: C.p },
-  userTypeMuted: { fontSize: 11, color: C.tm, marginTop: 2 },
-  elMini: { fontSize: 10 },
-  // スコアバッジ
-  scoreBadge: {
-    alignItems: 'center', justifyContent: 'center',
-    width: 48, height: 48, borderRadius: 24,
-    borderWidth: 1.5,
-  },
-  scoreNum: { fontSize: 16, fontWeight: '700', lineHeight: 20 },
-  scorePct: { fontSize: 9, fontWeight: '500', marginTop: -2 },
-  // カテゴリタグ
-  catTag: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
-  catTagTxt: { fontSize: 9, fontWeight: '500' },
-  // 空
-  emptyArea: { paddingVertical: 40, paddingHorizontal: 24, alignItems: 'center' },
-  emptyTitle: { fontSize: 14, fontWeight: '500', color: C.t2, marginBottom: 6 },
-  emptySub: { fontSize: 12, color: C.tm, lineHeight: 20, textAlign: 'center' },
-});
+function getStyles(C) {
+  return StyleSheet.create({
+    header: {
+      paddingHorizontal: 20, paddingTop: 20, paddingBottom: 14,
+      borderBottomWidth: 1, borderBottomColor: C.bd,
+    },
+    title: { fontSize: 26, fontWeight: '700', color: C.t1, letterSpacing: -0.5, marginBottom: 14 },
+    searchRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+    searchInput: {
+      flex: 1, backgroundColor: C.inputBg, borderWidth: 1, borderColor: C.bd,
+      borderRadius: 22, paddingHorizontal: 16, paddingVertical: 10,
+      fontSize: 13, color: C.t1,
+    },
+    searchBtn: {
+      paddingHorizontal: 18, paddingVertical: 10,
+      backgroundColor: C.p, borderRadius: 22,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    searchBtnTxt: { fontSize: 13, fontWeight: '600', color: C.white },
+    filter: {
+      paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20,
+      borderWidth: 1.5, borderColor: C.bd, backgroundColor: C.card,
+    },
+    filterOn: { backgroundColor: C.p, borderColor: C.p },
+    filterTxt: { fontSize: 12, fontWeight: '500', color: C.t2 },
+    filterTxtOn: { color: C.white, fontWeight: '600' },
+    resultCount: {
+      fontSize: 12, color: C.tm, fontWeight: '500',
+      paddingHorizontal: 20, marginBottom: 10,
+    },
+    emptyArea: { paddingVertical: 60, paddingHorizontal: 32, alignItems: 'center' },
+    emptyTitle: { fontSize: 15, fontWeight: '600', color: C.t2, marginBottom: 8, textAlign: 'center' },
+    emptySub: { fontSize: 13, color: C.tm, lineHeight: 22, textAlign: 'center' },
+  });
+}

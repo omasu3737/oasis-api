@@ -1,7 +1,9 @@
 import { Text, View } from 'react-native';
-import { C } from '../theme';
+import { useTheme } from '../context/ThemeContext';
 
 export default function UserIcon({ name = 'ユ', size = 72 }) {
+  const { colors: C } = useTheme();
+
   return (
     <View style={{
       width: size, height: size, borderRadius: size / 2,

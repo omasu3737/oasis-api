@@ -1,6 +1,7 @@
+import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Defs, Line, LinearGradient, Polygon, Stop } from 'react-native-svg';
-import { C } from '../theme';
+import { useTheme } from '../context/ThemeContext';
 
 const KEYS = ['depth', 'will', 'action', 'resonance', 'stability'];
 const LABELS = ['深さ', '意思', '行動', '共鳴', '安定'];
@@ -32,21 +33,28 @@ const LABEL_OFFSETS = [
 ];
 
 export default function RadarChart({ scores }) {
+  const { colors: C, isDark } = useTheme();
+  const s = useMemo(() => getStyles(C), [C]);
   const dataPoints = KEYS.map((k, i) => getPoint(i, (scores[k] || 0) / 100));
+
+  const gridColor = isDark ? '#2a1a40' : '#ece6ff';
+  const fillStopA = isDark ? '#a87cef' : '#5a3fc0';
+  const fillStopB = isDark ? '#5a3a8a' : '#c4b0f8';
+  const strokeColor = isDark ? '#a87cef' : '#5a3fc0';
 
   return (
     <View style={s.container}>
       <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
         <Defs>
           <LinearGradient id="rg" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0%" stopColor="#5a3fc0" stopOpacity="0.3" />
-            <Stop offset="100%" stopColor="#c4b0f8" stopOpacity="0.1" />
+            <Stop offset="0%" stopColor={fillStopA} stopOpacity="0.3" />
+            <Stop offset="100%" stopColor={fillStopB} stopOpacity="0.1" />
           </LinearGradient>
         </Defs>
 
         {GRID_LEVELS.map((level, i) => {
           const pts = Array.from({ length: AXES }, (_, j) => getPoint(j, level));
-          return <Polygon key={i} points={toStr(pts)} fill="none" stroke="#ece6ff" strokeWidth="1" />;
+          return <Polygon key={i} points={toStr(pts)} fill="none" stroke={gridColor} strokeWidth="1" />;
         })}
 
         {Array.from({ length: AXES }, (_, i) => {
@@ -54,12 +62,12 @@ export default function RadarChart({ scores }) {
           return (
             <Line key={i} x1={CX} y1={CY}
               x2={outer.x.toFixed(1)} y2={outer.y.toFixed(1)}
-              stroke="#ece6ff" strokeWidth="0.7" />
+              stroke={gridColor} strokeWidth="0.7" />
           );
         })}
 
         <Polygon points={toStr(dataPoints)}
-          fill="url(#rg)" stroke="#5a3fc0" strokeWidth="1.8" strokeLinejoin="round" />
+          fill="url(#rg)" stroke={strokeColor} strokeWidth="1.8" strokeLinejoin="round" />
       </Svg>
 
       {LABELS.map((label, i) => {
@@ -87,7 +95,7 @@ export default function RadarChart({ scores }) {
   );
 }
 
-const s = StyleSheet.create({
+const getStyles = (C) => StyleSheet.create({
   container: { alignSelf: 'center', width: SIZE, height: SIZE, marginVertical: 8 },
   label: { fontSize: 11, color: C.p, fontWeight: '500' },
 });

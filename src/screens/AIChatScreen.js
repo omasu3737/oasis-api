@@ -6,11 +6,14 @@ import {
   TouchableOpacity, View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from '../context/ThemeContext';
+import { useI18n } from '../i18n';
 import { getCurrentUser } from '../services/auth';
 import { loadMessages, saveMessage, sendToAI } from '../services/messages';
-import { C } from '../theme';
 
 export default function AIChatScreen() {
+  const { colors: C } = useTheme();
+  const { t } = useI18n();
   const navigation = useNavigation();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -19,7 +22,9 @@ export default function AIChatScreen() {
   const [currentUser, setCurrentUser] = useState(null);
   const scrollRef = useRef(null);
 
-  const WELCOME = { role: 'assistant', content: 'こんにちは。何でも話しかけてください。あなたのことを少しずつ理解していきます。' };
+  const s = getStyles(C);
+
+  const WELCOME = { role: 'assistant', content: t('chat_welcome') };
 
   useEffect(() => { initScreen(); }, []);
 
@@ -34,7 +39,7 @@ export default function AIChatScreen() {
       setMessages(history || [WELCOME]);
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: false }), 100);
     } catch (e) {
-      Alert.alert('エラー', '読み込みに失敗しました。再度お試しください。');
+      Alert.alert(t('error'), t('chat_load_error'));
     } finally {
       setLoading(false);
     }
@@ -56,8 +61,8 @@ export default function AIChatScreen() {
       setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
       await saveMessage(currentUser.id, 'assistant', reply);
     } catch (e) {
-      Alert.alert('通信エラー', 'メッセージの送信に失敗しました。インターネット接続を確認してください。');
-      setMessages(prev => [...prev, { role: 'assistant', content: 'もう一度試してください' }]);
+      Alert.alert(t('chat_network_error_title'), t('chat_network_error_msg'));
+      setMessages(prev => [...prev, { role: 'assistant', content: t('chat_retry_msg') }]);
     } finally {
       setTyping(false);
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
@@ -74,8 +79,8 @@ export default function AIChatScreen() {
           <Text style={{ fontSize: 16 }}>✦</Text>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={s.navName}>AIと話す</Text>
-          <Text style={s.navSub}>思考を記録する</Text>
+          <Text style={s.navName}>{t('chat_nav_name')}</Text>
+          <Text style={s.navSub}>{t('chat_nav_sub')}</Text>
         </View>
       </View>
       <KeyboardAvoidingView
@@ -116,7 +121,7 @@ export default function AIChatScreen() {
         <View style={s.inputRow}>
           <TextInput
             style={s.input}
-            placeholder="今考えていることを..."
+            placeholder={t('chat_placeholder')}
             placeholderTextColor={C.tm}
             value={input}
             onChangeText={setInput}
@@ -125,7 +130,7 @@ export default function AIChatScreen() {
             multiline
           />
           <TouchableOpacity style={[s.sendBtn, typing && { opacity: 0.5 }]} onPress={handleSend} disabled={typing}>
-            <Text style={{ color: '#fff', fontSize: 18 }}>↑</Text>
+            <Text style={{ color: C.white, fontSize: 18 }}>↑</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -133,43 +138,45 @@ export default function AIChatScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  nav: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingHorizontal: 18, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: C.bd,
-  },
-  backBtn: { padding: 4 },
-  backTxt: { fontSize: 22, color: C.p },
-  aiOrb: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: C.pp, borderWidth: 2, borderColor: C.bm,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  navName: { fontSize: 14, fontWeight: '500', color: C.t1 },
-  navSub: { fontSize: 10, color: C.tm },
-  bubbleWrap: { flexDirection: 'row', marginBottom: 2 },
-  bubbleWrapAI: { justifyContent: 'flex-start' },
-  bubbleWrapMe: { justifyContent: 'flex-end' },
-  bubble: { maxWidth: '84%', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 11 },
-  bubbleAI: { backgroundColor: C.pp, borderBottomLeftRadius: 5 },
-  bubbleMe: { backgroundColor: C.p, borderBottomRightRadius: 5 },
-  bubbleTxt: { fontSize: 13, lineHeight: 21 },
-  bubbleTxtAI: { color: C.t1 },
-  bubbleTxtMe: { color: '#fff' },
-  inputRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingHorizontal: 18, paddingVertical: 12,
-    borderTopWidth: 1, borderTopColor: C.bd,
-    backgroundColor: C.bg,
-  },
-  input: {
-    flex: 1, backgroundColor: C.pp, borderWidth: 1, borderColor: C.bm,
-    borderRadius: 22, paddingHorizontal: 16, paddingVertical: 11,
-    fontSize: 13, color: C.t1, maxHeight: 100,
-  },
-  sendBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: C.p, alignItems: 'center', justifyContent: 'center',
-  },
-});
+function getStyles(C) {
+  return StyleSheet.create({
+    nav: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      paddingHorizontal: 18, paddingVertical: 12,
+      borderBottomWidth: 1, borderBottomColor: C.bd,
+    },
+    backBtn: { padding: 4 },
+    backTxt: { fontSize: 22, color: C.p },
+    aiOrb: {
+      width: 36, height: 36, borderRadius: 18,
+      backgroundColor: C.pp, borderWidth: 2, borderColor: C.bm,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    navName: { fontSize: 14, fontWeight: '500', color: C.t1 },
+    navSub: { fontSize: 10, color: C.tm },
+    bubbleWrap: { flexDirection: 'row', marginBottom: 2 },
+    bubbleWrapAI: { justifyContent: 'flex-start' },
+    bubbleWrapMe: { justifyContent: 'flex-end' },
+    bubble: { maxWidth: '84%', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 11 },
+    bubbleAI: { backgroundColor: C.pp, borderBottomLeftRadius: 5 },
+    bubbleMe: { backgroundColor: C.p, borderBottomRightRadius: 5 },
+    bubbleTxt: { fontSize: 13, lineHeight: 21 },
+    bubbleTxtAI: { color: C.t1 },
+    bubbleTxtMe: { color: C.white },
+    inputRow: {
+      flexDirection: 'row', alignItems: 'center', gap: 8,
+      paddingHorizontal: 18, paddingVertical: 12,
+      borderTopWidth: 1, borderTopColor: C.bd,
+      backgroundColor: C.bg,
+    },
+    input: {
+      flex: 1, backgroundColor: C.pp, borderWidth: 1, borderColor: C.bm,
+      borderRadius: 22, paddingHorizontal: 16, paddingVertical: 11,
+      fontSize: 13, color: C.t1, maxHeight: 100,
+    },
+    sendBtn: {
+      width: 40, height: 40, borderRadius: 20,
+      backgroundColor: C.p, alignItems: 'center', justifyContent: 'center',
+    },
+  });
+}

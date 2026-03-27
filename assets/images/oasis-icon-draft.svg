@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- Background rounded rectangle clip -->
+    <clipPath id="roundedClip">
+      <rect width="1024" height="1024" rx="180" ry="180"/>
+    </clipPath>
+
+    <!-- Main droplet gradient (top to bottom: cyan -> purple -> pink) -->
+    <linearGradient id="dropletGradient" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="0%" stop-color="#00d4ff"/>
+      <stop offset="50%" stop-color="#6a1fc8"/>
+      <stop offset="100%" stop-color="#ec4899"/>
+    </linearGradient>
+
+    <!-- Shine/highlight gradient -->
+    <linearGradient id="shineGradient" x1="0.3" y1="0" x2="0.7" y2="0.6">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.6)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </linearGradient>
+
+    <!-- Radial glow behind the droplet -->
+    <radialGradient id="glowGradient" cx="0.5" cy="0.52" r="0.4">
+      <stop offset="0%" stop-color="#6a1fc8" stop-opacity="0.35"/>
+      <stop offset="60%" stop-color="#6a1fc8" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="#6a1fc8" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Shadow filter -->
+    <filter id="dropShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="25" flood-color="#6a1fc8" flood-opacity="0.3"/>
+    </filter>
+
+    <!-- Soft inner glow -->
+    <filter id="innerGlow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="12" result="blur"/>
+      <feOffset dx="0" dy="0"/>
+      <feComposite in2="SourceAlpha" operator="arithmetic" k2="-1" k3="1"/>
+      <feFlood flood-color="#00d4ff" flood-opacity="0.15"/>
+      <feComposite in2="blur" operator="in"/>
+      <feComposite in="SourceGraphic"/>
+    </filter>
+
+    <!-- Droplet path (stylized teardrop) -->
+    <path id="dropletPath" d="
+      M 512 180
+      C 512 180, 380 340, 330 440
+      C 270 560, 270 620, 300 700
+      C 330 775, 400 830, 512 840
+      C 624 830, 694 775, 724 700
+      C 754 620, 754 560, 694 440
+      C 644 340, 512 180, 512 180
+      Z
+    "/>
+  </defs>
+
+  <!-- Clipped background -->
+  <g clip-path="url(#roundedClip)">
+    <!-- White background -->
+    <rect width="1024" height="1024" fill="#ffffff"/>
+
+    <!-- Subtle radial glow behind droplet -->
+    <ellipse cx="512" cy="530" rx="380" ry="400" fill="url(#glowGradient)"/>
+
+    <!-- Droplet with shadow -->
+    <g filter="url(#dropShadow)">
+      <use href="#dropletPath" fill="url(#dropletGradient)"/>
+    </g>
+
+    <!-- Shine overlay (left side reflection) -->
+    <clipPath id="dropletClip">
+      <use href="#dropletPath"/>
+    </clipPath>
+    <g clip-path="url(#dropletClip)">
+      <!-- Main shine arc -->
+      <ellipse cx="430" cy="420" rx="120" ry="240" fill="url(#shineGradient)" transform="rotate(-15 430 420)"/>
+
+      <!-- Small highlight dot near top -->
+      <ellipse cx="460" cy="310" rx="28" ry="38" fill="rgba(255,255,255,0.5)" transform="rotate(-10 460 310)"/>
+
+      <!-- Subtle bottom reflection -->
+      <ellipse cx="512" cy="790" rx="100" ry="30" fill="rgba(255,255,255,0.08)"/>
+    </g>
+  </g>
+</svg>

@@ -9,13 +9,16 @@ import Svg, { Defs, LinearGradient, Stop, Text as SvgText } from 'react-native-s
 import RadarChart from '../components/RadarChart';
 import TraitBar from '../components/TraitBar';
 import UserIcon from '../components/UserIcon';
-import { getCurrentUser, signOut } from '../services/auth';
+import { useTheme } from '../context/ThemeContext';
+import { useI18n, LANGUAGES } from '../i18n';
+import { getCurrentUser, signOut, deleteAccount } from '../services/auth';
 import { getConversationCount, loadPersona } from '../services/persona';
 import { loadProfile, saveProfile } from '../services/profile';
 import { getMyQuestions, answerQuestion } from '../services/questions';
-import { C, ELEMENT_COLORS } from '../theme';
 
 function SLabel({ text, sub }) {
+  const { colors: C } = useTheme();
+  const s = getStyles(C);
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, marginBottom: 10 }}>
       <Text style={s.slabel}>{text}</Text>
@@ -25,11 +28,15 @@ function SLabel({ text, sub }) {
 }
 
 function Divider() {
+  const { colors: C } = useTheme();
+  const s = getStyles(C);
   return <View style={s.divider} />;
 }
 
-// 未解放カード（ぼかし + コンパクト）
+// Locked card (blurred + compact)
 function LockedCard({ icon, label, hint }) {
+  const { colors: C } = useTheme();
+  const s = getStyles(C);
   return (
     <View style={s.lockedCard}>
       <View style={s.lockedBlur}>
@@ -46,8 +53,10 @@ function LockedCard({ icon, label, hint }) {
   );
 }
 
-// 深層分析カード
+// Deep analysis card
 function AnalysisCard({ title, mainText, description, tags, icon }) {
+  const { colors: C } = useTheme();
+  const s = getStyles(C);
   return (
     <View style={s.analysisCard}>
       {icon ? <Text style={s.analysisIcon}>{icon}</Text> : null}
@@ -56,8 +65,8 @@ function AnalysisCard({ title, mainText, description, tags, icon }) {
       {description ? <Text style={s.analysisSub}>{description}</Text> : null}
       {tags?.length > 0 ? (
         <View style={s.tagRow}>
-          {tags.map((t, i) => (
-            <View key={i} style={s.tag}><Text style={s.tagTxt}>{t}</Text></View>
+          {tags.map((tg, i) => (
+            <View key={i} style={s.tag}><Text style={s.tagTxt}>{tg}</Text></View>
           ))}
         </View>
       ) : null}
@@ -65,8 +74,12 @@ function AnalysisCard({ title, mainText, description, tags, icon }) {
   );
 }
 
-// プロフィール編集モーダル（全フィールド）
+// Profile edit modal (all fields)
 function ProfileEditModal({ visible, onClose, profile, onSave }) {
+  const { colors: C } = useTheme();
+  const { t } = useI18n();
+  const s = getStyles(C);
+
   const [name, setName] = useState('');
   const [comment, setComment] = useState('');
   const [gender, setGender] = useState('');
@@ -89,7 +102,7 @@ function ProfileEditModal({ visible, onClose, profile, onSave }) {
   }, [visible]);
 
   async function handleSave() {
-    if (!name.trim()) { Alert.alert('エラー', '表示名を入力してください'); return; }
+    if (!name.trim()) { Alert.alert(t('error'), t('me_edit_name_required')); return; }
     setSaving(true);
     const ok = await onSave({
       displayName: name.trim(),
@@ -102,10 +115,16 @@ function ProfileEditModal({ visible, onClose, profile, onSave }) {
     });
     setSaving(false);
     if (ok) onClose();
-    else Alert.alert('エラー', '保存に失敗しました');
+    else Alert.alert(t('error'), t('me_edit_save_failed'));
   }
 
-  const GENDERS = ['未設定', '男性', '女性', 'その他', '回答しない'];
+  const GENDERS = [
+    { key: '', label: t('me_gender_unset') },
+    { key: 'male', label: t('me_gender_male') },
+    { key: 'female', label: t('me_gender_female') },
+    { key: 'other', label: t('me_gender_other') },
+    { key: 'no_answer', label: t('me_gender_no_answer') },
+  ];
 
   return (
     <Modal transparent animationType="slide" visible={visible} onRequestClose={onClose}>
@@ -118,56 +137,56 @@ function ProfileEditModal({ visible, onClose, profile, onSave }) {
             onStartShouldSetResponder={() => true}
           >
             <View style={s.mhandle} />
-            <Text style={s.modalTitle}>プロフィールを編集</Text>
+            <Text style={s.modalTitle}>{t('me_edit_title')}</Text>
 
-            <Text style={s.editLabel}>名前</Text>
+            <Text style={s.editLabel}>{t('profile_name')}</Text>
             <TextInput style={s.editInput} value={name} onChangeText={setName}
-              placeholder="あなたの名前" placeholderTextColor={C.tm} maxLength={20} />
+              placeholder={t('me_edit_name_placeholder')} placeholderTextColor={C.tm} maxLength={20} />
 
-            <Text style={s.editLabel}>性別</Text>
+            <Text style={s.editLabel}>{t('profile_gender')}</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
               {GENDERS.map(g => (
                 <TouchableOpacity
-                  key={g}
-                  style={[s.genderBtn, gender === g && s.genderBtnOn]}
-                  onPress={() => setGender(g === '未設定' ? '' : g)}
+                  key={g.key}
+                  style={[s.genderBtn, gender === g.key && s.genderBtnOn]}
+                  onPress={() => setGender(g.key)}
                 >
-                  <Text style={[s.genderTxt, gender === g && s.genderTxtOn]}>{g}</Text>
+                  <Text style={[s.genderTxt, gender === g.key && s.genderTxtOn]}>{g.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
 
-            <Text style={s.editLabel}>年齢</Text>
+            <Text style={s.editLabel}>{t('profile_age')}</Text>
             <TextInput style={s.editInput} value={age} onChangeText={setAge}
-              placeholder="例：28" placeholderTextColor={C.tm} keyboardType="numeric" maxLength={3} />
+              placeholder={t('me_edit_age_placeholder')} placeholderTextColor={C.tm} keyboardType="numeric" maxLength={3} />
 
-            <Text style={s.editLabel}>生年月日</Text>
+            <Text style={s.editLabel}>{t('profile_birthday')}</Text>
             <TextInput style={s.editInput} value={birthday} onChangeText={setBirthday}
-              placeholder="例：1998-03-15" placeholderTextColor={C.tm} maxLength={10} />
+              placeholder={t('me_edit_birthday_placeholder')} placeholderTextColor={C.tm} maxLength={10} />
 
-            <Text style={s.editLabel}>一言コメント</Text>
+            <Text style={s.editLabel}>{t('profile_comment')}</Text>
             <TextInput style={s.editInput} value={comment} onChangeText={setComment}
-              placeholder="例：ものづくりが好きです" placeholderTextColor={C.tm} maxLength={50} />
+              placeholder={t('me_edit_comment_placeholder')} placeholderTextColor={C.tm} maxLength={50} />
 
-            <Text style={s.editLabel}>自己紹介</Text>
+            <Text style={s.editLabel}>{t('profile_bio')}</Text>
             <TextInput style={[s.editInput, { height: 90, textAlignVertical: 'top' }]}
               value={bio} onChangeText={setBio} multiline
-              placeholder="例：興味・関心、職業" placeholderTextColor={C.tm} maxLength={200} />
+              placeholder={t('me_edit_bio_placeholder')} placeholderTextColor={C.tm} maxLength={200} />
 
-            <Text style={s.editLabel}>非公開にしたいトピック</Text>
+            <Text style={s.editLabel}>{t('profile_private')}</Text>
             <TextInput style={[s.editInput, { height: 60, textAlignVertical: 'top' }]}
               value={privateTopics} onChangeText={setPrivateTopics} multiline
-              placeholder="例：家族、収入" placeholderTextColor={C.tm} maxLength={200} />
+              placeholder={t('me_edit_private_placeholder')} placeholderTextColor={C.tm} maxLength={200} />
 
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
               <TouchableOpacity style={s.editCancelBtn} onPress={onClose}>
-                <Text style={s.editCancelTxt}>キャンセル</Text>
+                <Text style={s.editCancelTxt}>{t('cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[s.editSaveBtn, saving && { opacity: 0.5 }]}
                 onPress={handleSave} disabled={saving}
               >
-                <Text style={s.editSaveTxt}>{saving ? '保存中...' : '保存する'}</Text>
+                <Text style={s.editSaveTxt}>{saving ? t('me_edit_saving') : t('me_edit_save')}</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -177,42 +196,92 @@ function ProfileEditModal({ visible, onClose, profile, onSave }) {
   );
 }
 
-// 設定モーダル
+// Settings modal
 function SettingsModal({ visible, onClose, onEditProfile, onTerms }) {
+  const { colors: C, elementColors: ELEMENT_COLORS, isDark, toggleTheme } = useTheme();
+  const { t, lang, switchLang } = useI18n();
+  const s = getStyles(C);
+  const [deleting, setDeleting] = useState(false);
+
+  function handleDeleteAccount() {
+    Alert.alert(
+      t('me_delete_account'),
+      t('me_delete_confirm'),
+      [
+        { text: t('cancel'), style: 'cancel' },
+        {
+          text: t('delete_'),
+          style: 'destructive',
+          onPress: async () => {
+            setDeleting(true);
+            const { error } = await deleteAccount();
+            setDeleting(false);
+            if (error) {
+              Alert.alert(t('error'), t('me_delete_failed'));
+            }
+          },
+        },
+      ]
+    );
+  }
+
   return (
     <Modal transparent animationType="fade" visible={visible} onRequestClose={onClose}>
       <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={onClose}>
         <View style={s.settingsContent}>
           <View style={s.mhandle} />
-          <Text style={s.modalTitle}>設定</Text>
+          <Text style={s.modalTitle}>{t('me_settings')}</Text>
 
           <TouchableOpacity style={s.menuItem} onPress={() => { onClose(); onEditProfile(); }}>
             <View style={s.menuIcon}><Text style={{ fontSize: 16 }}>✎</Text></View>
-            <View><Text style={s.menuLabel}>プロフィール編集</Text><Text style={s.menuSub}>名前、自己紹介、その他</Text></View>
+            <View><Text style={s.menuLabel}>{t('me_edit_profile')}</Text><Text style={s.menuSub}>{t('me_edit_profile_sub')}</Text></View>
           </TouchableOpacity>
 
           <TouchableOpacity style={s.menuItem}>
             <View style={s.menuIcon}><Text style={{ fontSize: 16 }}>🔔</Text></View>
-            <View style={{ flex: 1 }}><Text style={s.menuLabel}>通知設定</Text></View>
-            <Text style={s.menuSoon}>準備中</Text>
+            <View style={{ flex: 1 }}><Text style={s.menuLabel}>{t('me_notifications')}</Text></View>
+            <Text style={s.menuSoon}>{t('me_coming_soon')}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={s.menuItem} onPress={toggleTheme}>
+            <View style={s.menuIcon}><Text style={{ fontSize: 16 }}>{isDark ? '☀️' : '🌙'}</Text></View>
+            <View style={{ flex: 1 }}><Text style={s.menuLabel}>{isDark ? t('me_light_mode') : t('me_dark_mode')}</Text></View>
+            <View style={[s.toggleTrack, isDark && s.toggleTrackOn]}>
+              <View style={[s.toggleThumb, isDark && s.toggleThumbOn]} />
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={s.menuItem} onPress={() => {
+            const nextIdx = LANGUAGES.findIndex(l => l.code === lang) + 1;
+            const next = LANGUAGES[nextIdx % LANGUAGES.length];
+            switchLang(next.code);
+          }}>
+            <View style={s.menuIcon}><Text style={{ fontSize: 16 }}>🌐</Text></View>
+            <View style={{ flex: 1 }}><Text style={s.menuLabel}>{t('me_language')} / Language</Text></View>
+            <Text style={s.menuSoon}>{LANGUAGES.find(l => l.code === lang)?.label || lang}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={s.menuItem}>
             <View style={s.menuIcon}><Text style={{ fontSize: 16 }}>🔒</Text></View>
-            <View style={{ flex: 1 }}><Text style={s.menuLabel}>アカウント設定</Text></View>
-            <Text style={s.menuSoon}>準備中</Text>
+            <View style={{ flex: 1 }}><Text style={s.menuLabel}>{t('me_account_settings')}</Text></View>
+            <Text style={s.menuSoon}>{t('me_coming_soon')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={s.menuItem} onPress={() => { onClose(); onTerms(); }}>
             <View style={s.menuIcon}><Text style={{ fontSize: 16 }}>📄</Text></View>
-            <View><Text style={s.menuLabel}>利用規約・プライバシー</Text></View>
+            <View><Text style={s.menuLabel}>{t('me_terms')}</Text></View>
           </TouchableOpacity>
 
           <View style={s.settingsDivider} />
 
           <TouchableOpacity style={s.menuItem} onPress={() => { onClose(); signOut(); }}>
             <View style={s.menuIcon}><Text style={{ fontSize: 16 }}>🚪</Text></View>
-            <Text style={[s.menuLabel, { color: '#e05050' }]}>ログアウト</Text>
+            <Text style={[s.menuLabel, { color: C.err }]}>{t('me_logout')}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[s.menuItem, { opacity: deleting ? 0.5 : 1 }]} onPress={handleDeleteAccount} disabled={deleting}>
+            <View style={s.menuIcon}><Text style={{ fontSize: 16 }}>🗑️</Text></View>
+            <Text style={[s.menuLabel, { color: C.tm, fontSize: 13 }]}>{deleting ? t('loading') : t('me_delete_account')}</Text>
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
@@ -222,6 +291,10 @@ function SettingsModal({ visible, onClose, onEditProfile, onTerms }) {
 
 export default function MeScreen() {
   const navigation = useNavigation();
+  const { colors: C, elementColors: ELEMENT_COLORS } = useTheme();
+  const { t } = useI18n();
+  const s = getStyles(C);
+
   const [profile, setProfile] = useState(null);
   const [personaData, setPersonaData] = useState(null);
   const [convCount, setConvCount] = useState(0);
@@ -243,7 +316,7 @@ export default function MeScreen() {
       setCurrentUserId(user.id);
 
       const p = await loadProfile(user.id);
-      setProfile(p || { display_name: user.email?.split('@')[0] || 'ユーザー' });
+      setProfile(p || { display_name: user.email?.split('@')[0] || t('me_default_user') });
 
       const [count, persona, qs] = await Promise.all([
         getConversationCount(user.id),
@@ -264,7 +337,6 @@ export default function MeScreen() {
     if (!currentUserId) return false;
     const ok = await saveProfile(currentUserId, fields);
     if (ok) {
-      // ローカルstateを更新
       setProfile(prev => ({
         ...prev,
         display_name: fields.displayName,
@@ -279,12 +351,12 @@ export default function MeScreen() {
     return ok;
   }
 
-  const userName = profile?.display_name || 'ユーザー';
+  const userName = profile?.display_name || t('me_default_user');
   const remaining = Math.max(0, 10 - (convCount % 10));
   const barPct = Math.min(100, ((convCount % 10) / 10) * 100);
   const elementInfo = personaData ? ELEMENT_COLORS[personaData.element_type] : null;
 
-  // 深層分析データ
+  // Deep analysis data
   const hasDeepAnalysis = personaData?.compatibility_text || personaData?.values_priority;
 
   return (
@@ -304,7 +376,7 @@ export default function MeScreen() {
 
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
 
-        {/* ヘッダー */}
+        {/* Header */}
         <View style={s.header}>
           <View>
             <Svg width={72} height={18} viewBox="0 0 72 18">
@@ -334,29 +406,29 @@ export default function MeScreen() {
           </View>
         </View>
 
-        {/* ヒーロー */}
+        {/* Hero */}
         <View style={s.hero}>
           <UserIcon name={userName} size={72} />
           <View style={{ flex: 1 }}>
             {elementInfo ? (
               <View style={[s.elBadge, { backgroundColor: elementInfo.bg, borderColor: elementInfo.border }]}>
                 <Text style={[s.elBadgeTxt, { color: elementInfo.text }]}>
-                  {elementInfo.emoji} {personaData.element_type}型
+                  {elementInfo.emoji} {personaData.element_type}{t('me_type_suffix')}
                 </Text>
               </View>
             ) : (
               <View style={s.elBadge}>
-                <Text style={s.elBadgeTxt}>分析中...</Text>
+                <Text style={s.elBadgeTxt}>{t('me_analyzing')}</Text>
               </View>
             )}
             <Text style={s.typeName}>
-              {personaData ? personaData.persona_type : 'AIと話すと判定されます'}
+              {personaData ? personaData.persona_type : t('me_talk_to_analyze')}
             </Text>
             {profile?.comment ? <Text style={s.commentText}>{profile.comment}</Text> : null}
           </View>
         </View>
 
-        {/* タグ（文体キーワード） */}
+        {/* Tags (style keywords) */}
         {personaData?.style_profile?.keywords?.length > 0 ? (
           <View style={s.tagsRow}>
             {personaData.style_profile.keywords.map((kw, i) => (
@@ -365,27 +437,27 @@ export default function MeScreen() {
           </View>
         ) : null}
 
-        {/* 初回CTA（会話0回の新規ユーザー向け） */}
+        {/* First-time CTA (new users with 0 conversations) */}
         {!loading && convCount === 0 && !personaData ? (
           <TouchableOpacity style={s.ctaCard} onPress={() => navigation.navigate('AIChat')}>
             <Text style={s.ctaEmoji}>✦</Text>
-            <Text style={s.ctaTitle}>まずAIと話してみよう</Text>
-            <Text style={s.ctaSub}>10回会話するとあなたの人格が分析されます{'\n'}話すほど、あなたのデジタル分身が育ちます</Text>
+            <Text style={s.ctaTitle}>{t('me_cta_title')}</Text>
+            <Text style={s.ctaSub}>{t('me_cta_desc_long')}</Text>
             <View style={s.ctaBtn}>
-              <Text style={s.ctaBtnTxt}>AIと話す</Text>
+              <Text style={s.ctaBtnTxt}>{t('me_cta_button')}</Text>
             </View>
           </TouchableOpacity>
         ) : null}
 
-        {/* 分析までのカウンター */}
+        {/* Analysis counter */}
         <View style={s.counter}>
           <Text style={{ fontSize: 18 }}>💬</Text>
           <View style={{ flex: 1 }}>
             <Text style={s.counterTxt}>
-              次の分析まで <Text style={{ color: C.p }}>{remaining}</Text> 回の会話
+              {t('me_next_analysis_prefix')} <Text style={{ color: C.p }}>{remaining}</Text> {t('me_next_analysis_suffix')}
             </Text>
             <Text style={s.counterSub}>
-              総会話数：{convCount}回
+              {t('me_total_conv', { count: convCount })}
             </Text>
             <View style={s.barWrap}>
               <View style={[s.barFill, { width: `${barPct}%` }]} />
@@ -395,64 +467,64 @@ export default function MeScreen() {
 
         <Divider />
 
-        {/* 人格レーダー */}
-        <SLabel text="人格レーダー" />
+        {/* Personality Radar */}
+        <SLabel text={t('me_radar')} />
         {personaData ? (
           <RadarChart scores={personaData} />
         ) : (
-          <LockedCard icon="🔮" label="人格レーダー" hint="AIと10回会話すると解放" />
+          <LockedCard icon="🔮" label={t('me_radar')} hint={t('me_locked_10')} />
         )}
 
-        {/* 特性スコア */}
-        <SLabel text="特性スコア" />
+        {/* Trait Scores */}
+        <SLabel text={t('me_traits')} />
         {personaData ? (
           <View style={{ paddingHorizontal: 24, marginBottom: 14 }}>
             {[
-              ['深さ', personaData.depth],
-              ['意思', personaData.will],
-              ['行動', personaData.action],
-              ['共鳴', personaData.resonance],
-              ['安定', personaData.stability],
+              [t('me_trait_depth'), personaData.depth],
+              [t('me_trait_will'), personaData.will],
+              [t('me_trait_action'), personaData.action],
+              [t('me_trait_resonance'), personaData.resonance],
+              [t('me_trait_stability'), personaData.stability],
             ].map(([label, val]) => (
               <TraitBar key={label} label={label} value={val || 0} />
             ))}
           </View>
         ) : (
-          <LockedCard icon="📊" label="特性スコア" hint="AIと10回会話すると解放" />
+          <LockedCard icon="📊" label={t('me_traits')} hint={t('me_locked_10')} />
         )}
 
         <Divider />
 
-        {/* プロフィール情報 */}
+        {/* Profile info */}
         {(profile?.age || profile?.birthday || profile?.bio) ? (
           <>
-            <SLabel text="プロフィール情報" />
+            <SLabel text={t('me_profile_info')} />
             <View style={s.profileInfoCard}>
               {profile.age ? (
-                <View style={s.piRow}><Text style={s.piLabel}>年齢</Text><Text style={s.piVal}>{profile.age}歳</Text></View>
+                <View style={s.piRow}><Text style={s.piLabel}>{t('profile_age')}</Text><Text style={s.piVal}>{profile.age}{t('me_age_suffix')}</Text></View>
               ) : null}
               {profile.birthday ? (
-                <View style={s.piRow}><Text style={s.piLabel}>生年月日</Text><Text style={s.piVal}>{profile.birthday}</Text></View>
+                <View style={s.piRow}><Text style={s.piLabel}>{t('profile_birthday')}</Text><Text style={s.piVal}>{profile.birthday}</Text></View>
               ) : null}
               {profile.bio ? (
-                <View style={s.piRow}><Text style={s.piLabel}>自己紹介</Text><Text style={s.piVal}>{profile.bio}</Text></View>
+                <View style={s.piRow}><Text style={s.piLabel}>{t('profile_bio')}</Text><Text style={s.piVal}>{profile.bio}</Text></View>
               ) : null}
             </View>
           </>
         ) : null}
 
-        {/* 相性がいい人 */}
-        <SLabel text="✦ 相性がいい人" />
+        {/* Compatibility */}
+        <SLabel text={'✦ ' + t('me_compatibility')} />
         {personaData?.compatibility_text ? (
           <View style={s.compatCard}>
             <Text style={s.compatText}>{personaData.compatibility_text}</Text>
           </View>
         ) : (
-          <LockedCard icon="🤝" label="相性分析" hint="30回会話すると解放" />
+          <LockedCard icon="🤝" label={t('me_compatibility')} hint={t('me_locked_30')} />
         )}
 
-        {/* 価値観の優先順位 */}
-        <SLabel text="価値観の優先順位" />
+        {/* Value Priorities */}
+        <SLabel text={t('me_values')} />
         {personaData?.values_priority ? (
           <AnalysisCard
             title="PRIORITY"
@@ -463,19 +535,19 @@ export default function MeScreen() {
         ) : personaData?.values_profile ? (
           <View style={s.analysisCard}>
             <Text style={s.analysisLabel}>VALUES</Text>
-            <Text style={s.piLabel}>大切にしていること</Text>
+            <Text style={s.piLabel}>{t('me_values_core')}</Text>
             <Text style={s.analysisMain}>{personaData.values_profile.core}</Text>
-            <Text style={s.piLabel}>行動の動機</Text>
+            <Text style={s.piLabel}>{t('me_values_motivation')}</Text>
             <Text style={s.analysisSub}>{personaData.values_profile.motivation}</Text>
-            <Text style={s.piLabel}>世界観</Text>
+            <Text style={s.piLabel}>{t('me_values_worldview')}</Text>
             <Text style={s.analysisSub}>{personaData.values_profile.worldview}</Text>
           </View>
         ) : (
-          <LockedCard icon="⚖️" label="価値観の優先順位" hint="30回会話すると解放" />
+          <LockedCard icon="⚖️" label={t('me_values')} hint={t('me_locked_30')} />
         )}
 
-        {/* 愛着スタイル */}
-        <SLabel text="愛着スタイル" />
+        {/* Attachment Style */}
+        <SLabel text={t('me_attachment')} />
         {personaData?.attachment_style ? (
           <AnalysisCard
             mainText={personaData.attachment_style.type || ''}
@@ -483,11 +555,11 @@ export default function MeScreen() {
             tags={personaData.attachment_style.tags || []}
           />
         ) : (
-          <LockedCard icon="💕" label="愛着スタイル" hint="30回会話すると解放" />
+          <LockedCard icon="💕" label={t('me_attachment')} hint={t('me_locked_30')} />
         )}
 
-        {/* ストレス反応 */}
-        <SLabel text="ストレス反応" />
+        {/* Stress Response */}
+        <SLabel text={t('me_stress')} />
         {personaData?.stress_response ? (
           <AnalysisCard
             mainText={personaData.stress_response.pattern || ''}
@@ -495,24 +567,24 @@ export default function MeScreen() {
             tags={personaData.stress_response.tags || []}
           />
         ) : (
-          <LockedCard icon="⚡" label="ストレス反応" hint="30回会話すると解放" />
+          <LockedCard icon="⚡" label={t('me_stress')} hint={t('me_locked_30')} />
         )}
 
-        {/* エネルギー源泉 */}
-        <SLabel text="エネルギーの源泉" />
+        {/* Energy Source */}
+        <SLabel text={t('me_energy')} />
         {personaData?.energy_source ? (
           <View style={s.analysisCard}>
-            <Text style={s.piLabel}>充電</Text>
+            <Text style={s.piLabel}>{t('me_energy_recharge')}</Text>
             <Text style={s.analysisSub}>{personaData.energy_source.recharge || ''}</Text>
-            <Text style={[s.piLabel, { marginTop: 8 }]}>消耗</Text>
+            <Text style={[s.piLabel, { marginTop: 8 }]}>{t('me_energy_drain')}</Text>
             <Text style={s.analysisSub}>{personaData.energy_source.drain || ''}</Text>
           </View>
         ) : (
-          <LockedCard icon="🔋" label="エネルギーの源泉" hint="30回会話すると解放" />
+          <LockedCard icon="🔋" label={t('me_energy')} hint={t('me_locked_30')} />
         )}
 
-        {/* 思考スタイル */}
-        <SLabel text="思考スタイル" />
+        {/* Thinking Style */}
+        <SLabel text={t('me_thinking')} />
         {personaData?.thinking_style ? (
           <AnalysisCard
             mainText={personaData.thinking_style.pattern || ''}
@@ -520,34 +592,34 @@ export default function MeScreen() {
             tags={personaData.thinking_style.tags || []}
           />
         ) : (
-          <LockedCard icon="🧠" label="思考スタイル" hint="30回会話すると解放" />
+          <LockedCard icon="🧠" label={t('me_thinking')} hint={t('me_locked_30')} />
         )}
 
         <Divider />
 
-        {/* 文体プロファイル */}
-        <SLabel text="文体プロファイル" />
+        {/* Writing Style Profile */}
+        <SLabel text={t('me_style')} />
         {personaData?.style_profile ? (
           <View style={s.analysisCard}>
-            <Text style={s.piLabel}>話し方</Text>
+            <Text style={s.piLabel}>{t('me_style_tone')}</Text>
             <Text style={s.analysisMain}>{personaData.style_profile.tone}</Text>
-            <Text style={s.piLabel}>文章の長さ</Text>
+            <Text style={s.piLabel}>{t('me_style_length')}</Text>
             <Text style={s.analysisSub}>{personaData.style_profile.sentence_length}</Text>
           </View>
         ) : (
-          <LockedCard icon="✍️" label="文体プロファイル" hint="AIと10回会話すると解放" />
+          <LockedCard icon="✍️" label={t('me_style')} hint={t('me_locked_10')} />
         )}
 
-        {/* あなたへの質問 */}
+        {/* Questions for You */}
         {questions.length > 0 ? (
           <>
             <Divider />
-            <SLabel text="あなたへの質問" sub={`${questions.filter(q => q.status === 'pending').length}件未回答`} />
+            <SLabel text={t('me_qa')} sub={t('me_qa_pending', { count: questions.filter(q => q.status === 'pending').length })} />
             {questions.map((q) => (
               <View key={q.id} style={s.qaCard}>
                 <Text style={s.qaQ}>Q. {q.question_text}</Text>
                 {q.source_count > 1 ? (
-                  <Text style={s.qaCount}>{q.source_count}人がこの質問をしました</Text>
+                  <Text style={s.qaCount}>{t('me_qa_asked_by', { count: q.source_count })}</Text>
                 ) : null}
                 {q.status === 'answered' ? (
                   <View style={s.qaAnswered}>
@@ -559,14 +631,14 @@ export default function MeScreen() {
                       style={s.qaInput}
                       value={answerDraft}
                       onChangeText={setAnswerDraft}
-                      placeholder="回答を入力..."
+                      placeholder={t('me_qa_answer_placeholder')}
                       placeholderTextColor={C.tm}
                       multiline
                       maxLength={300}
                     />
                     <View style={{ flexDirection: 'row', gap: 8, marginTop: 6 }}>
                       <TouchableOpacity style={s.qaCancelBtn} onPress={() => { setAnsweringId(null); setAnswerDraft(''); }}>
-                        <Text style={s.qaCancelTxt}>キャンセル</Text>
+                        <Text style={s.qaCancelTxt}>{t('cancel')}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={[s.qaSubmitBtn, !answerDraft.trim() && { opacity: 0.5 }]}
@@ -580,13 +652,13 @@ export default function MeScreen() {
                           }
                         }}
                       >
-                        <Text style={s.qaSubmitTxt}>回答する</Text>
+                        <Text style={s.qaSubmitTxt}>{t('me_qa_submit')}</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
                 ) : (
                   <TouchableOpacity style={s.qaAnswerBtn} onPress={() => { setAnsweringId(q.id); setAnswerDraft(''); }}>
-                    <Text style={s.qaAnswerBtnTxt}>回答する</Text>
+                    <Text style={s.qaAnswerBtnTxt}>{t('me_qa_submit')}</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -596,14 +668,14 @@ export default function MeScreen() {
 
         <Divider />
 
-        {/* シェア・プレビュー */}
+        {/* Share / Preview */}
         <View style={{ paddingHorizontal: 24, marginBottom: 12, gap: 8 }}>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <TouchableOpacity style={s.shareBtn}>
-              <Text style={s.shareBtnTxt}>シェア</Text>
+              <Text style={s.shareBtnTxt}>{t('me_share')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.previewBtn}>
-              <Text style={s.shareBtnTxt}>プレビュー</Text>
+              <Text style={s.shareBtnTxt}>{t('me_preview')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -614,98 +686,105 @@ export default function MeScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  header: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  name: { fontSize: 26, fontWeight: '500', color: C.t1, letterSpacing: -0.5 },
-  headerIcon: { width: 34, height: 34, borderRadius: 11, backgroundColor: C.pp, alignItems: 'center', justifyContent: 'center' },
-  hero: { flexDirection: 'row', alignItems: 'flex-start', gap: 16, paddingHorizontal: 24, paddingBottom: 18 },
-  elBadge: { flexDirection: 'row', alignSelf: 'flex-start', backgroundColor: '#f5f5f5', borderWidth: 1, borderColor: '#e0e0e0', borderRadius: 12, paddingHorizontal: 9, paddingVertical: 3, marginBottom: 4 },
-  elBadgeTxt: { fontSize: 10, color: '#999', fontWeight: '500' },
-  typeName: { fontSize: 16, fontWeight: '500', color: C.t1, marginBottom: 4 },
-  commentText: { fontSize: 11, color: C.t2, lineHeight: 16 },
-  tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingHorizontal: 24, marginBottom: 14 },
-  // 初回CTA
-  ctaCard: { marginHorizontal: 24, marginBottom: 16, backgroundColor: C.p, borderRadius: 20, padding: 24, alignItems: 'center' },
-  ctaEmoji: { fontSize: 28, color: '#fff', marginBottom: 8 },
-  ctaTitle: { fontSize: 16, fontWeight: '600', color: '#fff', marginBottom: 6 },
-  ctaSub: { fontSize: 12, color: 'rgba(255,255,255,0.8)', textAlign: 'center', lineHeight: 20, marginBottom: 16 },
-  ctaBtn: { backgroundColor: '#fff', paddingHorizontal: 28, paddingVertical: 10, borderRadius: 20 },
-  ctaBtnTxt: { fontSize: 13, fontWeight: '600', color: C.p },
-  counter: { marginHorizontal: 24, marginBottom: 16, backgroundColor: '#fff', borderWidth: 1, borderColor: C.bd, borderRadius: 14, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  counterTxt: { fontSize: 12, fontWeight: '500', color: C.t1, marginBottom: 2 },
-  counterSub: { fontSize: 11, color: C.tm },
-  barWrap: { height: 4, backgroundColor: C.pp, borderRadius: 2, overflow: 'hidden', marginTop: 6 },
-  barFill: { height: 4, backgroundColor: C.p, borderRadius: 2 },
-  divider: { height: 1, backgroundColor: C.bd, marginHorizontal: 24, marginBottom: 14, marginTop: 8 },
-  slabel: { fontSize: 10, color: C.tm, textTransform: 'uppercase', letterSpacing: 1 },
-  // 深層分析カード
-  analysisCard: { marginHorizontal: 24, marginBottom: 12, backgroundColor: C.bs, borderRadius: 16, padding: 14 },
-  analysisIcon: { fontSize: 10, marginBottom: 4 },
-  analysisLabel: { fontSize: 9, color: C.tm, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 5 },
-  analysisMain: { fontSize: 13, fontWeight: '500', color: C.t1, marginBottom: 5 },
-  analysisSub: { fontSize: 11, color: C.t2, lineHeight: 18, marginBottom: 8 },
-  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 5 },
-  tag: { backgroundColor: '#fff', borderWidth: 1, borderColor: C.bm, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 3 },
-  tagTxt: { fontSize: 10, color: C.p },
-  // ロックカード
-  lockedCard: { marginHorizontal: 24, marginBottom: 8, borderRadius: 14, overflow: 'hidden' },
-  lockedBlur: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingHorizontal: 14, paddingVertical: 10,
-    backgroundColor: C.bs, borderWidth: 1, borderColor: C.bm,
-    borderRadius: 14, opacity: 0.7,
-  },
-  lockedIcon: { fontSize: 18 },
-  lockedLabel: { fontSize: 12, fontWeight: '500', color: C.tm },
-  lockedHint: { fontSize: 10, color: C.bm, marginTop: 1 },
-  lockIcon: { opacity: 0.5 },
-  // Q&A
-  qaCard: { marginHorizontal: 24, marginBottom: 8, backgroundColor: '#fff', borderWidth: 1, borderColor: C.bd, borderRadius: 14, padding: 12 },
-  qaQ: { fontSize: 12, fontWeight: '500', color: C.p },
-  qaCount: { fontSize: 10, color: C.tm, marginTop: 4 },
-  qaAnswered: { marginTop: 8, backgroundColor: C.bs, borderRadius: 10, padding: 10 },
-  qaA: { fontSize: 12, color: C.t1, lineHeight: 18 },
-  qaInput: { backgroundColor: C.pp, borderWidth: 1, borderColor: C.bm, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 12, color: C.t1, height: 70, textAlignVertical: 'top' },
-  qaCancelBtn: { flex: 1, padding: 8, backgroundColor: '#fff', borderWidth: 1, borderColor: C.bm, borderRadius: 10, alignItems: 'center' },
-  qaCancelTxt: { fontSize: 11, color: C.tm },
-  qaSubmitBtn: { flex: 1, padding: 8, backgroundColor: C.p, borderRadius: 10, alignItems: 'center' },
-  qaSubmitTxt: { fontSize: 11, color: '#fff', fontWeight: '500' },
-  qaAnswerBtn: { marginTop: 8, padding: 8, backgroundColor: C.pp, borderWidth: 1, borderColor: C.bm, borderRadius: 10, alignItems: 'center' },
-  qaAnswerBtnTxt: { fontSize: 11, color: C.p },
-  // 相性カード
-  compatCard: { marginHorizontal: 24, marginBottom: 12, borderRadius: 16, padding: 14, backgroundColor: '#f5f0ff', borderWidth: 1, borderColor: C.pm },
-  compatText: { fontSize: 12, color: C.t1, lineHeight: 20 },
-  // プロフィール情報
-  profileInfoCard: { marginHorizontal: 24, marginBottom: 12, backgroundColor: '#fff', borderWidth: 1, borderColor: C.bd, borderRadius: 16, padding: 14 },
-  piRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 9 },
-  piLabel: { fontSize: 10, color: C.tm, width: 56, flexShrink: 0, paddingTop: 1 },
-  piVal: { fontSize: 12, color: C.t1, flex: 1, lineHeight: 18 },
-  // シェア
-  shareBtn: { flex: 1, padding: 11, backgroundColor: C.pp, borderWidth: 1, borderColor: C.bm, borderRadius: 14, alignItems: 'center' },
-  previewBtn: { flex: 1, padding: 11, backgroundColor: '#fff', borderWidth: 1, borderColor: C.bm, borderRadius: 14, alignItems: 'center' },
-  shareBtnTxt: { fontSize: 12, color: C.p },
-  // モーダル共通
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' },
-  mhandle: { width: 36, height: 4, backgroundColor: C.bm, borderRadius: 2, alignSelf: 'center', marginBottom: 18 },
-  modalTitle: { fontSize: 16, fontWeight: '500', color: C.t1, marginBottom: 14 },
-  // 設定モーダル
-  settingsContent: { backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40 },
-  menuItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: C.bd },
-  menuIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: C.pp, alignItems: 'center', justifyContent: 'center' },
-  menuLabel: { fontSize: 14, color: C.t1 },
-  menuSub: { fontSize: 11, color: C.tm },
-  menuSoon: { fontSize: 10, color: C.tm, backgroundColor: C.pp, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
-  settingsDivider: { height: 1, backgroundColor: C.bd, marginVertical: 4 },
-  // プロフィール編集モーダル
-  editModalContent: { backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40 },
-  editLabel: { fontSize: 11, color: C.t2, marginBottom: 5, marginTop: 10 },
-  editInput: { backgroundColor: C.pp, borderWidth: 1, borderColor: C.bm, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11, fontSize: 13, color: C.t1 },
-  genderBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 18, borderWidth: 1, borderColor: C.bm, backgroundColor: '#fff' },
-  genderBtnOn: { backgroundColor: C.p, borderColor: C.p },
-  genderTxt: { fontSize: 12, color: C.p },
-  genderTxtOn: { color: '#fff' },
-  editCancelBtn: { flex: 1, padding: 12, backgroundColor: '#fff', borderWidth: 1, borderColor: C.bm, borderRadius: 14, alignItems: 'center' },
-  editCancelTxt: { fontSize: 13, color: C.tm },
-  editSaveBtn: { flex: 1, padding: 12, backgroundColor: C.p, borderRadius: 14, alignItems: 'center' },
-  editSaveTxt: { fontSize: 13, color: '#fff', fontWeight: '500' },
-});
+function getStyles(C) {
+  return StyleSheet.create({
+    header: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+    name: { fontSize: 26, fontWeight: '500', color: C.t1, letterSpacing: -0.5 },
+    headerIcon: { width: 34, height: 34, borderRadius: 11, backgroundColor: C.card, borderWidth: 1, borderColor: C.bd, alignItems: 'center', justifyContent: 'center' },
+    hero: { flexDirection: 'row', alignItems: 'flex-start', gap: 16, paddingHorizontal: 24, paddingBottom: 18 },
+    elBadge: { flexDirection: 'row', alignSelf: 'flex-start', backgroundColor: C.bs, borderWidth: 1, borderColor: C.bm, borderRadius: 12, paddingHorizontal: 9, paddingVertical: 3, marginBottom: 4 },
+    elBadgeTxt: { fontSize: 10, color: C.tm, fontWeight: '500' },
+    typeName: { fontSize: 16, fontWeight: '500', color: C.t1, marginBottom: 4 },
+    commentText: { fontSize: 11, color: C.t2, lineHeight: 16 },
+    tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingHorizontal: 24, marginBottom: 14 },
+    // First-time CTA
+    ctaCard: { marginHorizontal: 24, marginBottom: 16, backgroundColor: C.p, borderRadius: 20, padding: 24, alignItems: 'center' },
+    ctaEmoji: { fontSize: 28, color: C.white, marginBottom: 8 },
+    ctaTitle: { fontSize: 16, fontWeight: '600', color: C.white, marginBottom: 6 },
+    ctaSub: { fontSize: 12, color: 'rgba(255,255,255,0.8)', textAlign: 'center', lineHeight: 20, marginBottom: 16 },
+    ctaBtn: { backgroundColor: C.white, paddingHorizontal: 28, paddingVertical: 10, borderRadius: 20 },
+    ctaBtnTxt: { fontSize: 13, fontWeight: '600', color: C.p },
+    counter: { marginHorizontal: 24, marginBottom: 16, backgroundColor: C.card, borderWidth: 1, borderColor: C.bd, borderRadius: 14, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
+    counterTxt: { fontSize: 12, fontWeight: '500', color: C.t1, marginBottom: 2 },
+    counterSub: { fontSize: 11, color: C.t2 },
+    barWrap: { height: 4, backgroundColor: C.pp, borderRadius: 2, overflow: 'hidden', marginTop: 6 },
+    barFill: { height: 4, backgroundColor: C.p, borderRadius: 2 },
+    divider: { height: 1, backgroundColor: C.bd, marginHorizontal: 24, marginBottom: 14, marginTop: 8 },
+    slabel: { fontSize: 10, color: C.tm, textTransform: 'uppercase', letterSpacing: 1 },
+    // Deep analysis card
+    analysisCard: { marginHorizontal: 24, marginBottom: 12, backgroundColor: C.bs, borderRadius: 16, padding: 14 },
+    analysisIcon: { fontSize: 10, marginBottom: 4 },
+    analysisLabel: { fontSize: 9, color: C.tm, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 5 },
+    analysisMain: { fontSize: 13, fontWeight: '500', color: C.t1, marginBottom: 5 },
+    analysisSub: { fontSize: 11, color: C.t2, lineHeight: 18, marginBottom: 8 },
+    tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 5 },
+    tag: { backgroundColor: C.card, borderWidth: 1, borderColor: C.bm, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 3 },
+    tagTxt: { fontSize: 10, color: C.p },
+    // Locked card
+    lockedCard: { marginHorizontal: 24, marginBottom: 8, borderRadius: 14, overflow: 'hidden' },
+    lockedBlur: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      paddingHorizontal: 14, paddingVertical: 10,
+      backgroundColor: C.bs, borderWidth: 1, borderColor: C.bm,
+      borderRadius: 14, opacity: 0.75,
+    },
+    lockedIcon: { fontSize: 18 },
+    lockedLabel: { fontSize: 12, fontWeight: '500', color: C.t2 },
+    lockedHint: { fontSize: 10, color: C.tm, marginTop: 1 },
+    lockIcon: { opacity: 0.6 },
+    // Q&A
+    qaCard: { marginHorizontal: 24, marginBottom: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.bd, borderRadius: 14, padding: 12 },
+    qaQ: { fontSize: 12, fontWeight: '500', color: C.p },
+    qaCount: { fontSize: 10, color: C.tm, marginTop: 4 },
+    qaAnswered: { marginTop: 8, backgroundColor: C.bs, borderRadius: 10, padding: 10 },
+    qaA: { fontSize: 12, color: C.t1, lineHeight: 18 },
+    qaInput: { backgroundColor: C.inputBg, borderWidth: 1, borderColor: C.bm, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 12, color: C.t1, height: 70, textAlignVertical: 'top' },
+    qaCancelBtn: { flex: 1, padding: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.bm, borderRadius: 10, alignItems: 'center' },
+    qaCancelTxt: { fontSize: 11, color: C.tm },
+    qaSubmitBtn: { flex: 1, padding: 8, backgroundColor: C.p, borderRadius: 10, alignItems: 'center' },
+    qaSubmitTxt: { fontSize: 11, color: C.white, fontWeight: '500' },
+    qaAnswerBtn: { marginTop: 8, padding: 8, backgroundColor: C.pp, borderWidth: 1, borderColor: C.bm, borderRadius: 10, alignItems: 'center' },
+    qaAnswerBtnTxt: { fontSize: 11, color: C.p },
+    // Compatibility card
+    compatCard: { marginHorizontal: 24, marginBottom: 12, borderRadius: 16, padding: 14, backgroundColor: C.pp, borderWidth: 1, borderColor: C.pm },
+    compatText: { fontSize: 12, color: C.t1, lineHeight: 20 },
+    // Profile info
+    profileInfoCard: { marginHorizontal: 24, marginBottom: 12, backgroundColor: C.card, borderWidth: 1, borderColor: C.bd, borderRadius: 16, padding: 14 },
+    piRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 9 },
+    piLabel: { fontSize: 10, color: C.tm, width: 56, flexShrink: 0, paddingTop: 1 },
+    piVal: { fontSize: 12, color: C.t1, flex: 1, lineHeight: 18 },
+    // Share
+    shareBtn: { flex: 1, padding: 11, backgroundColor: C.pp, borderWidth: 1, borderColor: C.bm, borderRadius: 14, alignItems: 'center' },
+    previewBtn: { flex: 1, padding: 11, backgroundColor: C.card, borderWidth: 1, borderColor: C.bm, borderRadius: 14, alignItems: 'center' },
+    shareBtnTxt: { fontSize: 12, color: C.p },
+    // Modal shared
+    modalOverlay: { flex: 1, backgroundColor: C.overlay, justifyContent: 'flex-end' },
+    mhandle: { width: 36, height: 4, backgroundColor: C.bm, borderRadius: 2, alignSelf: 'center', marginBottom: 18 },
+    modalTitle: { fontSize: 16, fontWeight: '500', color: C.t1, marginBottom: 14 },
+    // Settings modal
+    settingsContent: { backgroundColor: C.modalBg, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40 },
+    menuItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: C.bd },
+    menuIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: C.bs, alignItems: 'center', justifyContent: 'center' },
+    menuLabel: { fontSize: 14, color: C.t1 },
+    menuSub: { fontSize: 11, color: C.tm },
+    menuSoon: { fontSize: 10, color: C.t2, backgroundColor: C.pp, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
+    settingsDivider: { height: 1, backgroundColor: C.bd, marginVertical: 4 },
+    // Dark mode toggle
+    toggleTrack: { width: 44, height: 24, borderRadius: 12, backgroundColor: C.bm, justifyContent: 'center', paddingHorizontal: 2 },
+    toggleTrackOn: { backgroundColor: C.p },
+    toggleThumb: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff' },
+    toggleThumbOn: { alignSelf: 'flex-end' },
+    // Profile edit modal
+    editModalContent: { backgroundColor: C.modalBg, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40 },
+    editLabel: { fontSize: 11, color: C.t2, marginBottom: 5, marginTop: 10 },
+    editInput: { backgroundColor: C.inputBg, borderWidth: 1, borderColor: C.bm, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11, fontSize: 13, color: C.t1 },
+    genderBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 18, borderWidth: 1, borderColor: C.bm, backgroundColor: C.card },
+    genderBtnOn: { backgroundColor: C.p, borderColor: C.p },
+    genderTxt: { fontSize: 12, color: C.p },
+    genderTxtOn: { color: C.white },
+    editCancelBtn: { flex: 1, padding: 12, backgroundColor: C.card, borderWidth: 1, borderColor: C.bm, borderRadius: 14, alignItems: 'center' },
+    editCancelTxt: { fontSize: 13, color: C.tm },
+    editSaveBtn: { flex: 1, padding: 12, backgroundColor: C.p, borderRadius: 14, alignItems: 'center' },
+    editSaveTxt: { fontSize: 13, color: C.white, fontWeight: '500' },
+  });
+}

@@ -4,11 +4,13 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AppNavigator from './src/navigation/AppNavigator';
 import LoginScreen from './src/screens/LoginScreen';
 import { getSession, onAuthStateChange } from './src/services/auth';
-import { C } from './src/theme';
+import { ThemeProvider, useTheme } from './src/context/ThemeContext';
+import { I18nProvider } from './src/i18n';
 
-export default function App() {
+function AppContent() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const { colors: C, isDark } = useTheme();
 
   useEffect(() => {
     getSession().then(s => {
@@ -31,8 +33,18 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
+      <StatusBar barStyle={C.statusBar} backgroundColor={C.bg} />
       <AppNavigator />
     </SafeAreaProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <I18nProvider>
+        <AppContent />
+      </I18nProvider>
+    </ThemeProvider>
   );
 }

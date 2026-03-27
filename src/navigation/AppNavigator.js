@@ -11,7 +11,8 @@ import ResonanceScreen from '../screens/ResonanceScreen';
 import TalkScreen from '../screens/TalkScreen';
 import TermsScreen from '../screens/TermsScreen';
 import UserProfileScreen from '../screens/UserProfileScreen';
-import { C } from '../theme';
+import { useTheme } from '../context/ThemeContext';
+import { useI18n } from '../i18n';
 
 function IconMe({ color }) {
   return (
@@ -42,8 +43,8 @@ function IconDisc({ color }) {
   );
 }
 
-function TabIcon({ focused, SvgIcon, label }) {
-  const color = focused ? C.p : C.tm;
+function TabIcon({ focused, SvgIcon, label, colors }) {
+  const color = focused ? colors.p : colors.tm;
   return (
     <View style={{ alignItems: 'center', paddingTop: 4 }}>
       <SvgIcon color={color} />
@@ -52,7 +53,7 @@ function TabIcon({ focused, SvgIcon, label }) {
       </Text>
       <View style={{
         width: 4, height: 4, borderRadius: 2,
-        backgroundColor: focused ? C.p : 'transparent',
+        backgroundColor: focused ? colors.p : 'transparent',
         marginTop: 3,
       }} />
     </View>
@@ -63,13 +64,16 @@ const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
 function TabNavigator() {
+  const { colors } = useTheme();
+  const { t } = useI18n();
+
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: C.bg,
-          borderTopColor: C.bd,
+          backgroundColor: colors.bg,
+          borderTopColor: colors.bd,
           borderTopWidth: 1,
           height: 60,
           paddingBottom: 0,
@@ -79,25 +83,27 @@ function TabNavigator() {
       }}
     >
       <Tab.Screen
-        name="わたし"
+        name="Me"
         component={MeScreen}
-        options={{ tabBarIcon: ({ focused }) => <TabIcon focused={focused} SvgIcon={IconMe} label="わたし" /> }}
+        options={{ tabBarIcon: ({ focused }) => <TabIcon focused={focused} SvgIcon={IconMe} label={t('tab_me')} colors={colors} /> }}
       />
       <Tab.Screen
-        name="トーク"
+        name="Talk"
         component={TalkScreen}
-        options={{ tabBarIcon: ({ focused }) => <TabIcon focused={focused} SvgIcon={IconTalk} label="トーク" /> }}
+        options={{ tabBarIcon: ({ focused }) => <TabIcon focused={focused} SvgIcon={IconTalk} label={t('tab_talk')} colors={colors} /> }}
       />
       <Tab.Screen
-        name="共鳴"
+        name="Resonance"
         component={ResonanceScreen}
-        options={{ tabBarIcon: ({ focused }) => <TabIcon focused={focused} SvgIcon={IconDisc} label="共鳴" /> }}
+        options={{ tabBarIcon: ({ focused }) => <TabIcon focused={focused} SvgIcon={IconDisc} label={t('tab_resonance')} colors={colors} /> }}
       />
     </Tab.Navigator>
   );
 }
 
 export default function AppNavigator() {
+  const { colors } = useTheme();
+
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>

@@ -36,3 +36,31 @@ export function onAuthStateChange(callback) {
   });
   return subscription;
 }
+
+// パスワードリセットメール送信
+export async function resetPassword(email) {
+  const { error } = await supabase.auth.resetPasswordForEmail(email);
+  return { error };
+}
+
+// アカウント削除（全データ削除 + auth削除）
+export async function deleteAccount() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) return { error: new Error('Not authenticated') };
+
+  const response = await fetch('https://oasis-api-nine.vercel.app/api/delete-account', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    return { error: new Error(body.error || 'Delete failed') };
+  }
+
+  await supabase.auth.signOut();
+  return { error: null };
+}
