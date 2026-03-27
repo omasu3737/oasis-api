@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OASIS - AIが紡ぐ、本当の自分との対話</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f0d18; color: #ffffff; }
+
+    /* Nav */
+    nav { display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; border-bottom: 1px solid #2a2645; }
+    .logo { font-size: 22px; font-weight: 800; letter-spacing: 4px; background: linear-gradient(90deg, #00d4ff, #a855f7, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .nav-links { display: flex; gap: 24px; }
+    .nav-links a { color: #b8b0cc; text-decoration: none; font-size: 14px; transition: color 0.2s; }
+    .nav-links a:hover { color: #ffffff; }
+
+    /* Hero */
+    .hero { text-align: center; padding: 100px 40px 80px; }
+    .hero-badge { display: inline-block; padding: 6px 16px; border-radius: 20px; border: 1px solid #9b6dff44; background: #9b6dff15; color: #b898ff; font-size: 12px; font-weight: 600; letter-spacing: 1px; margin-bottom: 28px; }
+    .hero h1 { font-size: clamp(36px, 6vw, 64px); font-weight: 800; line-height: 1.15; letter-spacing: -1px; margin-bottom: 20px; }
+    .grad { background: linear-gradient(90deg, #00d4ff, #a855f7, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .hero p { font-size: 18px; color: #b8b0cc; line-height: 1.7; max-width: 540px; margin: 0 auto 40px; }
+    .cta-group { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+    .btn-primary { padding: 14px 32px; background: linear-gradient(135deg, #9b6dff, #ec4899); border-radius: 50px; color: #fff; font-size: 15px; font-weight: 700; text-decoration: none; transition: opacity 0.2s; }
+    .btn-primary:hover { opacity: 0.85; }
+    .btn-secondary { padding: 14px 32px; border: 1.5px solid #2a2645; border-radius: 50px; color: #b8b0cc; font-size: 15px; font-weight: 600; text-decoration: none; transition: border-color 0.2s; }
+    .btn-secondary:hover { border-color: #9b6dff; color: #fff; }
+
+    /* Features */
+    .section { padding: 80px 40px; max-width: 1100px; margin: 0 auto; }
+    .section-title { text-align: center; font-size: clamp(24px, 4vw, 40px); font-weight: 800; margin-bottom: 16px; }
+    .section-sub { text-align: center; color: #b8b0cc; font-size: 16px; margin-bottom: 60px; }
+    .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
+    .feature-card { background: #1a1830; border: 1px solid #2a2645; border-radius: 20px; padding: 32px; transition: border-color 0.2s; }
+    .feature-card:hover { border-color: #9b6dff55; }
+    .feature-icon { font-size: 36px; margin-bottom: 16px; }
+    .feature-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 10px; }
+    .feature-card p { color: #7a7090; font-size: 14px; line-height: 1.7; }
+
+    /* How it works */
+    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 32px; margin-top: 60px; }
+    .step { text-align: center; }
+    .step-num { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #9b6dff, #ec4899); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; margin: 0 auto 16px; }
+    .step h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+    .step p { color: #7a7090; font-size: 13px; line-height: 1.6; }
+
+    /* Download */
+    .download { text-align: center; padding: 80px 40px; background: #1a1830; border-top: 1px solid #2a2645; border-bottom: 1px solid #2a2645; }
+    .download h2 { font-size: clamp(24px, 4vw, 40px); font-weight: 800; margin-bottom: 16px; }
+    .download p { color: #b8b0cc; margin-bottom: 36px; font-size: 16px; }
+    .store-btn { display: inline-flex; align-items: center; gap: 10px; padding: 14px 28px; background: #ffffff10; border: 1.5px solid #ffffff20; border-radius: 14px; color: #fff; text-decoration: none; font-size: 14px; font-weight: 600; transition: background 0.2s; }
+    .store-btn:hover { background: #ffffff20; }
+
+    /* Footer */
+    footer { text-align: center; padding: 40px; color: #7a7090; font-size: 13px; }
+    footer a { color: #9b6dff; text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+    .footer-links { display: flex; gap: 24px; justify-content: center; margin-bottom: 16px; }
+
+    @media (max-width: 600px) {
+      nav { padding: 16px 20px; }
+      .hero { padding: 60px 20px; }
+      .section { padding: 60px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <div class="logo">OASIS</div>
+    <div class="nav-links">
+      <a href="#features">機能</a>
+      <a href="#how">使い方</a>
+      <a href="privacy.html">プライバシー</a>
+      <a href="terms.html">利用規約</a>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div class="hero-badge">✦ AIパーソナリティ分析</div>
+    <h1>AIと話すほど、<br><span class="grad">本当の自分</span>が見えてくる</h1>
+    <p>OASISは会話を通じてあなたの性格・価値観・思考パターンを学習し、本当に相性の合う人との出会いをつくります。</p>
+    <div class="cta-group">
+      <a href="https://play.google.com/store/apps/details?id=com.omasu.oasis" class="btn-primary">Google Play でダウンロード</a>
+      <a href="#how" class="btn-secondary">使い方を見る</a>
+    </div>
+  </section>
+
+  <div class="section" id="features">
+    <h2 class="section-title">OASISだけの<span class="grad">特徴</span></h2>
+    <p class="section-sub">単なる診断テストではない。会話するたびに進化する、あなた専用のAI。</p>
+    <div class="features">
+      <div class="feature-card">
+        <div class="feature-icon">✦</div>
+        <h3>会話型パーソナリティ分析</h3>
+        <p>質問に答えるだけじゃない。日常の会話からAIが自然にあなたの5軸スコアを分析します。</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🌐</div>
+        <h3>共鳴スコアで相性発見</h3>
+        <p>友人・恋愛・仕事の3カテゴリで他ユーザーとの相性をスコア化。本当に合う人を見つけられます。</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🪞</div>
+        <h3>デジタル分身</h3>
+        <p>あなたのAIが他のユーザーからの質問に答えます。在籍していなくても、あなたらしさが伝わります。</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔒</div>
+        <h3>プライバシー最優先</h3>
+        <p>AIとの会話内容は他のユーザーに公開されません。分析結果のスコアのみが共有されます。</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🌙</div>
+        <h3>ダークモード対応</h3>
+        <p>目に優しいダークテーマと、清潔感のあるライトテーマを切り替えて使えます。</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🌐</div>
+        <h3>日本語・English対応</h3>
+        <p>日本語と英語に対応。設定からいつでも切り替えられます。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="how">
+    <h2 class="section-title">3ステップで<span class="grad">始める</span></h2>
+    <p class="section-sub">難しい設定は一切不要。ダウンロードしてすぐ使えます。</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>AIと話す</h3>
+        <p>日常のことを気軽に話しかけるだけ。テストや質問票への回答は不要です。</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>性格が分析される</h3>
+        <p>10回の会話でパーソナリティ分析が始まります。話すほど精度が上がります。</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>相性の合う人と繋がる</h3>
+        <p>共鳴タブで相性スコアが高いユーザーを発見。フレンド申請してDMを送れます。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="download">
+    <h2>今すぐ<span class="grad">ダウンロード</span></h2>
+    <p>無料で始められます。まずはAIと話してみましょう。</p>
+    <a href="https://play.google.com/store/apps/details?id=com.omasu.oasis" class="store-btn">
+      ▶ Google Play でダウンロード
+    </a>
+  </div>
+
+  <footer>
+    <div class="footer-links">
+      <a href="privacy.html">プライバシーポリシー</a>
+      <a href="terms.html">利用規約</a>
+      <a href="mailto:support@oasis-app.jp">お問い合わせ</a>
+    </div>
+    <p>© 2026 OASIS. All rights reserved.</p>
+  </footer>
+
+</body>
+</html>
