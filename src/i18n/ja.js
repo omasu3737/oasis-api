@@ -99,6 +99,7 @@ export default {
   me_qa_answer_placeholder: '回答を入力...',
   me_qa_submit: '回答する',
   me_share: 'シェア',
+  me_share_msg: 'OASISでAIと話して自分の性格を分析してみよう！\nhttps://play.google.com/store/apps/details?id=com.omasu.oasis',
   me_preview: 'プレビュー',
   me_locked_hint: 'AIともっと話すと解放されます',
   me_locked_10: 'AIと10回会話すると解放',
@@ -187,6 +188,7 @@ export default {
   resonance_try_different: 'フィルターや検索ワードを変えてみてください',
   resonance_empty_hint: '他のユーザーが登録すると\n共鳴スコアとともに表示されます\n\n上の検索欄でユーザーを\n検索することもできます',
   resonance_invite: '友達を招待する',
+  resonance_invite_msg: 'OASISというアプリを使ってみて！AIが自分の性格を分析して、相性の合う人を見つけられるよ。\nhttps://play.google.com/store/apps/details?id=com.omasu.oasis',
   resonance_default_user: 'ユーザー',
   resonance_analyzing: '分析中...',
 

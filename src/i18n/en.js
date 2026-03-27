@@ -99,6 +99,7 @@ export default {
   me_qa_answer_placeholder: 'Type your answer...',
   me_qa_submit: 'Answer',
   me_share: 'Share',
+  me_share_msg: 'Try OASIS – AI analyzes your personality through conversation and finds truly compatible people!\nhttps://play.google.com/store/apps/details?id=com.omasu.oasis',
   me_preview: 'Preview',
   me_locked_hint: 'Talk more with AI to unlock',
   me_locked_10: 'Unlocks after 10 conversations',
@@ -187,6 +188,7 @@ export default {
   resonance_try_different: 'Try changing your filters or search terms',
   resonance_empty_hint: 'When other users sign up,\nthey\'ll appear here with\nresonance scores\n\nYou can also search for\nusers above',
   resonance_invite: 'Invite friends',
+  resonance_invite_msg: 'Try OASIS! An AI analyzes your personality and finds people you\'re truly compatible with.\nhttps://play.google.com/store/apps/details?id=com.omasu.oasis',
   resonance_default_user: 'User',
   resonance_analyzing: 'Analyzing...',
 

@@ -1,10 +1,11 @@
 import { useNavigation } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text,
+  ActivityIndicator, RefreshControl, ScrollView, Share, StyleSheet, Text,
   TextInput, TouchableOpacity, View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { UserCardSkeleton } from '../components/SkeletonCard';
 import UserIcon from '../components/UserIcon';
 import { useTheme } from '../context/ThemeContext';
 import { useI18n } from '../i18n';
@@ -320,8 +321,8 @@ export default function ResonanceScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.p} colors={[C.p]} />}
       >
         {loading ? (
-          <View style={s.emptyArea}>
-            <ActivityIndicator color={C.p} size="large" />
+          <View style={{ paddingTop: 8 }}>
+            {[1,2,3,4].map(i => <UserCardSkeleton key={i} />)}
           </View>
         ) : users.length > 0 ? (
           <>
@@ -344,7 +345,9 @@ export default function ResonanceScreen() {
           </>
         ) : (
           <View style={s.emptyArea}>
-            <Text style={{ fontSize: 40, marginBottom: 14 }}>🔍</Text>
+            <Text style={{ fontSize: 40, marginBottom: 14 }}>
+              {searched && query ? '🔍' : '🌐'}
+            </Text>
             <Text style={s.emptyTitle}>
               {searched && query
                 ? t('resonance_not_found_query', { query })
@@ -355,6 +358,17 @@ export default function ResonanceScreen() {
                 ? t('resonance_try_different')
                 : t('resonance_empty_hint')}
             </Text>
+            {!query && (
+              <TouchableOpacity
+                style={s.inviteBtn}
+                onPress={() => Share.share({
+                  message: t('resonance_invite_msg'),
+                  title: 'OASIS',
+                })}
+              >
+                <Text style={s.inviteBtnTxt}>🔗 {t('resonance_invite')}</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
       </ScrollView>
@@ -394,6 +408,8 @@ function getStyles(C) {
     },
     emptyArea: { paddingVertical: 60, paddingHorizontal: 32, alignItems: 'center' },
     emptyTitle: { fontSize: 15, fontWeight: '600', color: C.t2, marginBottom: 8, textAlign: 'center' },
-    emptySub: { fontSize: 13, color: C.tm, lineHeight: 22, textAlign: 'center' },
+    emptySub: { fontSize: 13, color: C.tm, lineHeight: 22, textAlign: 'center', marginBottom: 24 },
+    inviteBtn: { paddingHorizontal: 24, paddingVertical: 12, backgroundColor: C.p, borderRadius: 24 },
+    inviteBtnTxt: { fontSize: 14, fontWeight: '600', color: C.white },
   });
 }

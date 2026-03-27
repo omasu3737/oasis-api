@@ -5,6 +5,7 @@ import {
   Text, TextInput, TouchableOpacity, View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { FriendItemSkeleton } from '../components/SkeletonCard';
 import UserIcon from '../components/UserIcon';
 import { useTheme } from '../context/ThemeContext';
 import { useI18n } from '../i18n';
@@ -154,7 +155,7 @@ export default function TalkScreen() {
         <Text style={s.sectionSep}>{t('talk_friends')}</Text>
 
         {loading ? (
-          <View style={s.emptyArea}><ActivityIndicator color={C.p} /></View>
+          <View>{[1,2,3].map(i => <FriendItemSkeleton key={i} />)}</View>
         ) : friends.length > 0 ? (
           friends.map((f) => {
             const latest = latestMessages[f.friendId];

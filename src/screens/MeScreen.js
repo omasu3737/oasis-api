@@ -2,7 +2,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
 import {
   Alert, Image, KeyboardAvoidingView, Modal, Platform, ScrollView,
-  StyleSheet, Text, TextInput, TouchableOpacity, View
+  Share, StyleSheet, Text, TextInput, TouchableOpacity, View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Stop, Text as SvgText } from 'react-native-svg';
@@ -453,6 +453,12 @@ export default function MeScreen() {
             <Text style={s.name}>{userName}</Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity style={s.headerIcon} onPress={() => Share.share({
+              message: t('me_share_msg'),
+              title: 'OASIS',
+            })}>
+              <Text style={{ fontSize: 15 }}>↑</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={s.headerIcon} onPress={() => setShowSettings(true)}>
               <Text style={{ fontSize: 15 }}>⚙️</Text>
             </TouchableOpacity>
