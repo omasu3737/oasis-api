@@ -13,33 +13,6 @@ import { getCurrentUser } from '../services/auth';
 import { calcCategoryScores, calcResonanceScore, getBestCategory } from '../services/resonance';
 import { supabase } from '../supabase';
 
-// Resonance level badge with color-coded ring
-function ResonanceBadge({ score, C }) {
-  const getColor = () => {
-    if (score >= 80) return '#e040fb';
-    if (score >= 65) return C.p;
-    if (score >= 50) return C.pl;
-    return C.tm;
-  };
-  const color = getColor();
-  const label = score >= 80 ? '✦' : score >= 65 ? '◆' : '◇';
-
-  return (
-    <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-      <View style={{
-        width: 52, height: 52, borderRadius: 26,
-        borderWidth: 2.5, borderColor: color,
-        alignItems: 'center', justifyContent: 'center',
-        backgroundColor: color + '15',
-      }}>
-        <Text style={{ fontSize: 17, fontWeight: '700', color, lineHeight: 20 }}>{score}</Text>
-        <Text style={{ fontSize: 8, color, fontWeight: '600', marginTop: -1 }}>%</Text>
-      </View>
-      <Text style={{ fontSize: 9, color, fontWeight: '600', marginTop: 3 }}>{label}</Text>
-    </View>
-  );
-}
-
 // Category tag chip
 function CategoryChip({ label, catKey, isDark }) {
   const colors = isDark
@@ -124,21 +97,11 @@ function UserCard({ item, onPress, C, elementColors, isDark, t }) {
           )}
         </View>
 
-        {/* Resonance badge */}
+        {/* Resonance score */}
         {score != null ? (
-          <ResonanceBadge score={score} C={C} />
+          <Text style={{ fontSize: 16, fontWeight: '700', color: C.p }}>{score}%</Text>
         ) : personaData ? (
-          <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-            <View style={{
-              width: 52, height: 52, borderRadius: 26,
-              borderWidth: 2, borderColor: C.bd,
-              alignItems: 'center', justifyContent: 'center',
-              backgroundColor: C.bs,
-            }}>
-              <Text style={{ fontSize: 13, color: C.tm }}>?</Text>
-            </View>
-            <Text style={{ fontSize: 9, color: C.tm, marginTop: 3 }}>分析後</Text>
-          </View>
+          <Text style={{ fontSize: 14, color: C.tm }}>?%</Text>
         ) : null}
       </View>
     </TouchableOpacity>
@@ -149,7 +112,7 @@ const st = {
   card: (C) => ({
     backgroundColor: C.card,
     borderRadius: 16,
-    padding: 14,
+    padding: 9,
     borderWidth: 1,
     borderColor: C.bd,
     shadowColor: '#000',

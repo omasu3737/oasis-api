@@ -1,7 +1,7 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigationContainer } from '@react-navigation/native';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import Svg, { Circle, Line, Path } from 'react-native-svg';
 import AIChatScreen from '../screens/AIChatScreen';
 import AskAIScreen from '../screens/AskAIScreen';
@@ -12,7 +12,6 @@ import TalkScreen from '../screens/TalkScreen';
 import TermsScreen from '../screens/TermsScreen';
 import UserProfileScreen from '../screens/UserProfileScreen';
 import { useTheme } from '../context/ThemeContext';
-import { useI18n } from '../i18n';
 
 function IconMe({ color }) {
   return (
@@ -43,18 +42,15 @@ function IconDisc({ color }) {
   );
 }
 
-function TabIcon({ focused, SvgIcon, label, colors }) {
+function TabIcon({ focused, SvgIcon, colors }) {
   const color = focused ? colors.p : colors.tm;
   return (
     <View style={{ alignItems: 'center', paddingTop: 4 }}>
       <SvgIcon color={color} />
-      <Text style={{ fontSize: 10, color, fontWeight: focused ? '500' : '400', marginTop: 4 }}>
-        {label}
-      </Text>
       <View style={{
         width: 4, height: 4, borderRadius: 2,
         backgroundColor: focused ? colors.p : 'transparent',
-        marginTop: 3,
+        marginTop: 6,
       }} />
     </View>
   );
@@ -65,7 +61,6 @@ const Stack = createNativeStackNavigator();
 
 function TabNavigator() {
   const { colors } = useTheme();
-  const { t } = useI18n();
 
   return (
     <Tab.Navigator
@@ -85,17 +80,17 @@ function TabNavigator() {
       <Tab.Screen
         name="Me"
         component={MeScreen}
-        options={{ tabBarIcon: ({ focused }) => <TabIcon focused={focused} SvgIcon={IconMe} label={t('tab_me')} colors={colors} /> }}
+        options={{ tabBarIcon: ({ focused }) => <TabIcon focused={focused} SvgIcon={IconMe} colors={colors} /> }}
       />
       <Tab.Screen
         name="Talk"
         component={TalkScreen}
-        options={{ tabBarIcon: ({ focused }) => <TabIcon focused={focused} SvgIcon={IconTalk} label={t('tab_talk')} colors={colors} /> }}
+        options={{ tabBarIcon: ({ focused }) => <TabIcon focused={focused} SvgIcon={IconTalk} colors={colors} /> }}
       />
       <Tab.Screen
         name="Resonance"
         component={ResonanceScreen}
-        options={{ tabBarIcon: ({ focused }) => <TabIcon focused={focused} SvgIcon={IconDisc} label={t('tab_resonance')} colors={colors} /> }}
+        options={{ tabBarIcon: ({ focused }) => <TabIcon focused={focused} SvgIcon={IconDisc} colors={colors} /> }}
       />
     </Tab.Navigator>
   );
