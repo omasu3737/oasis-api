@@ -524,7 +524,12 @@ export default async function handler(req, res) {
 
       const data = await response.json();
       text = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'もう一度試してください';
-      text = text.replace(/\*\*/g, '').replace(/\*/g, '').replace(/#{1,6}\s/g, '').trim();
+      text = text.replace(/\*\*/g, '').replace(/\*/g, '').replace(/#{1,6}\s/g, '');
+      // Gemini 2.5 thinking mode leak cleanup
+      text = text.replace(/SPECIAL INSTRUCTION:.*?(\n|$)/gi, '');
+      text = text.replace(/\[INST\][\s\S]*?\[\/INST\]/gi, '');
+      text = text.replace(/^(Note|IMPORTANT|WARNING):.*?(\n|$)/gm, '');
+      text = text.trim();
       break;
     }
 

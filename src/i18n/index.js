@@ -15,7 +15,19 @@ export function I18nProvider({ children }) {
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then(v => {
-      if (v) setLang(v);
+      if (v) {
+        setLang(v);
+      } else {
+        // First launch: detect device locale
+        try {
+          const deviceLocale = Intl.DateTimeFormat().resolvedOptions().locale?.split('-')[0] || 'ja';
+          const supported = ['ja', 'en', 'ko'];
+          const detected = supported.includes(deviceLocale) ? deviceLocale : 'ja';
+          setLang(detected);
+        } catch {
+          // fallback to Japanese
+        }
+      }
       setReady(true);
     }).catch(() => setReady(true));
   }, []);

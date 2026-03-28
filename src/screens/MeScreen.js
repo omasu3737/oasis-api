@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { useEffect, useState } from 'react';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Alert, Image, KeyboardAvoidingView, Modal, Platform, ScrollView,
   Share, StyleSheet, Text, TextInput, TouchableOpacity, View
@@ -336,15 +336,32 @@ function SettingsModal({ visible, onClose, onEditProfile, onTerms, twinEnabled, 
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity style={s.menuItem} onPress={() => {
-            const nextIdx = LANGUAGES.findIndex(l => l.code === lang) + 1;
-            const next = LANGUAGES[nextIdx % LANGUAGES.length];
-            switchLang(next.code);
-          }}>
+          <View style={s.menuItem}>
             <View style={s.menuIcon}><Ionicons name="globe-outline" size={18} color={C.t2} /></View>
-            <View style={{ flex: 1 }}><Text style={s.menuLabel}>{t('me_language')} / Language</Text></View>
-            <Text style={s.menuSoon}>{LANGUAGES.find(l => l.code === lang)?.label || lang}</Text>
-          </TouchableOpacity>
+            <View style={{ flex: 1 }}>
+              <Text style={s.menuLabel}>{t('me_language')} / Language</Text>
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                {LANGUAGES.map(l => (
+                  <TouchableOpacity
+                    key={l.code}
+                    onPress={() => switchLang(l.code)}
+                    style={{
+                      paddingHorizontal: 14, paddingVertical: 6,
+                      borderRadius: 20,
+                      backgroundColor: lang === l.code ? C.p : C.card,
+                      borderWidth: 1,
+                      borderColor: lang === l.code ? C.p : C.border,
+                    }}
+                  >
+                    <Text style={{
+                      fontSize: 12, fontWeight: '600',
+                      color: lang === l.code ? '#fff' : C.t2,
+                    }}>{l.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </View>
 
           <TouchableOpacity style={s.menuItem}>
             <View style={s.menuIcon}><Ionicons name="lock-closed-outline" size={18} color={C.t2} /></View>
@@ -406,6 +423,19 @@ export default function MeScreen() {
   const [showTwinLog, setShowTwinLog] = useState(false);
 
   useEffect(() => { loadData(); }, []);
+
+  useFocusEffect(useCallback(() => {
+    // Reload convCount and persona when returning to this screen (e.g., from chat)
+    if (currentUserId) {
+      Promise.all([
+        getConversationCount(currentUserId),
+        loadPersona(currentUserId),
+      ]).then(([count, persona]) => {
+        setConvCount(count);
+        if (persona) setPersonaData(persona);
+      }).catch(() => {});
+    }
+  }, [currentUserId]));
 
   async function loadData() {
     setLoading(true);
