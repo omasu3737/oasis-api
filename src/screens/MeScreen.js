@@ -39,18 +39,18 @@ function Divider() {
 
 // Locked card (blurred + compact)
 function LockedCard({ icon, label, hint }) {
-  const { colors: C } = useTheme();
+  const { colors: C, isDark } = useTheme();
   const s = getStyles(C);
   return (
     <View style={s.lockedCard}>
       <View style={s.lockedBlur}>
-        <Ionicons name={icon} size={20} color={C.t3} />
+        <Ionicons name={icon} size={20} color={isDark ? C.t1 : C.t3} />
         <View style={{ flex: 1 }}>
           <Text style={s.lockedLabel}>{label}</Text>
           <Text style={s.lockedHint}>{hint}</Text>
         </View>
         <View style={s.lockIcon}>
-          <Ionicons name="lock-closed" size={16} color={C.t3} />
+          <Ionicons name="lock-closed" size={16} color={isDark ? C.t2 : C.t3} />
         </View>
       </View>
     </View>
@@ -597,7 +597,7 @@ export default function MeScreen() {
 
         {/* Analysis counter */}
         <View style={s.counter}>
-          <Text style={{ fontSize: 18 }}>💬</Text>
+          <Ionicons name="chatbubble-ellipses-outline" size={22} color={C.p} />
           <View style={{ flex: 1 }}>
             <Text style={s.counterTxt}>
               {t('me_next_analysis_prefix')} <Text style={{ color: C.p }}>{remaining}</Text> {t('me_next_analysis_suffix')}
@@ -1035,8 +1035,8 @@ function getStyles(C) {
     counterSub: { fontSize: 11, color: C.t2 },
     barWrap: { height: 4, backgroundColor: C.pp, borderRadius: 2, overflow: 'hidden', marginTop: 6 },
     barFill: { height: 4, backgroundColor: C.p, borderRadius: 2 },
-    divider: { height: 1, backgroundColor: C.bd, marginHorizontal: 24, marginBottom: 14, marginTop: 8 },
-    slabel: { fontSize: 10, color: C.tm, textTransform: 'uppercase', letterSpacing: 1 },
+    divider: { height: 1, backgroundColor: C.bm, marginHorizontal: 24, marginBottom: 14, marginTop: 8 },
+    slabel: { fontSize: 10, color: C.t2, textTransform: 'uppercase', letterSpacing: 1 },
     // Deep analysis card
     analysisCard: { marginHorizontal: 24, marginBottom: 12, backgroundColor: C.bs, borderRadius: 16, padding: 14 },
     analysisIcon: { fontSize: 10, marginBottom: 4 },
@@ -1052,11 +1052,11 @@ function getStyles(C) {
       flexDirection: 'row', alignItems: 'center', gap: 10,
       paddingHorizontal: 14, paddingVertical: 10,
       backgroundColor: C.bs, borderWidth: 1, borderColor: C.bm,
-      borderRadius: 14, opacity: 0.75,
+      borderRadius: 14, opacity: 0.92,
     },
     lockedIcon: { fontSize: 18 },
-    lockedLabel: { fontSize: 12, fontWeight: '500', color: C.t2 },
-    lockedHint: { fontSize: 10, color: C.tm, marginTop: 1 },
+    lockedLabel: { fontSize: 12, fontWeight: '500', color: C.t1 },
+    lockedHint: { fontSize: 10, color: C.t2, marginTop: 1 },
     lockIcon: { opacity: 0.6 },
     // Q&A
     qaEmptyCard: { marginHorizontal: 24, marginBottom: 12, alignItems: 'center', padding: 28, backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.bd },

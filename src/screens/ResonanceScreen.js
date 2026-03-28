@@ -125,7 +125,21 @@ function UserCard({ item, onPress, C, elementColors, isDark, t }) {
         </View>
 
         {/* Resonance badge */}
-        {score != null ? <ResonanceBadge score={score} C={C} /> : null}
+        {score != null ? (
+          <ResonanceBadge score={score} C={C} />
+        ) : personaData ? (
+          <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+            <View style={{
+              width: 52, height: 52, borderRadius: 26,
+              borderWidth: 2, borderColor: C.bd,
+              alignItems: 'center', justifyContent: 'center',
+              backgroundColor: C.bs,
+            }}>
+              <Text style={{ fontSize: 13, color: C.tm }}>?</Text>
+            </View>
+            <Text style={{ fontSize: 9, color: C.tm, marginTop: 3 }}>分析後</Text>
+          </View>
+        ) : null}
       </View>
     </TouchableOpacity>
   );
