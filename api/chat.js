@@ -314,8 +314,8 @@ ${conversationText}
 
 // --- Deep Personality Analysis (会話30回以上で実行) ---
 
-async function analyzeDeepPersonality(userId, conversationCount) {
-  if (conversationCount < 30) return null;
+async function analyzeDeepPersonality(userId, conversationCount, qaAnswers = [], dmMessages = [], minCount = 30) {
+  if (conversationCount < minCount) return null;
 
   // 過去の要約 + 直近の会話を取得（最新20件に制限）
   const { data: summaries } = await supabase
@@ -342,7 +342,13 @@ async function analyzeDeepPersonality(userId, conversationCount) {
     .map(m => `${m.role === 'user' ? 'ユーザー' : 'AI'}: ${m.content}`)
     .join('\n');
 
-  const ctx = summaryText + '【最近の会話】\n' + recentText;
+  const qaText = qaAnswers?.length > 0
+    ? '\n\n【Q&A回答（本人の言葉）】\n' + qaAnswers.map(q => `Q: ${q.question_text}\nA: ${q.answer_text}`).join('\n---\n')
+    : '';
+  const dmText = dmMessages?.length > 0
+    ? '\n\n【フレンドへのメッセージ（本人の発言のみ）】\n' + dmMessages.map(m => m.content).join('\n')
+    : '';
+  const ctx = summaryText + '【最近の会話】\n' + recentText + qaText + dmText;
 
   const parseJSON = (text) => {
     try {
@@ -474,19 +480,47 @@ export default async function handler(req, res) {
     return res.status(429).json({ error: 'Too many requests. Please wait.' });
   }
 
-  // 1日200回ソフトリミットチェック（Premiumユーザー向け自然な締め）
+  // サブスクリプションtier取得（ADMIN_USER_ID → DB → free の優先順）
+  let userTier = 'free';
+  try {
+    if (userId === process.env.ADMIN_USER_ID) {
+      userTier = 'premium';
+    } else {
+      const { data: subData } = await supabase
+        .from('subscriptions')
+        .select('tier, expires_at')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (subData && (!subData.expires_at || new Date(subData.expires_at) > new Date())) {
+        userTier = subData.tier || 'free';
+      }
+    }
+  } catch { /* tier取得失敗はfreeとして続行 */ }
+
+  // プラン別日次制限チェック
+  const dailyLimits = { free: 15, standard: 40, premium: 200 };
+  const dailyLimit = dailyLimits[userTier] ?? 15;
   let isSoftLimit = false;
   try {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
-    const { count: todayCount } = await supabase
+    const { count: todayMsgCount } = await supabase
       .from('ai_messages')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
       .eq('role', 'user')
       .gte('created_at', todayStart.toISOString());
-    isSoftLimit = (todayCount || 0) >= 200;
-  } catch { /* ソフトリミット取得失敗は無視して続行 */ }
+    const used = todayMsgCount || 0;
+    if (userTier === 'premium') {
+      isSoftLimit = used >= dailyLimit;
+    } else if (used >= dailyLimit) {
+      // free / standard はハードリミット
+      const upgradeMsg = userTier === 'free'
+        ? `今日の無料チャット（${dailyLimit}回）を使い切りました。スタンダードプランで40回/日に増やせます。`
+        : `今日のチャット（${dailyLimit}回）を使い切りました。プレミアムプランで無制限になります。`;
+      return res.status(429).json({ error: 'daily_limit_reached', tier: userTier, limit: dailyLimit, message: upgradeMsg });
+    }
+  } catch { /* 制限チェック失敗は続行 */ }
 
   // STEP4: Retrieve relevant memories for context
   let memoryContext = '';
@@ -576,17 +610,36 @@ export default async function handler(req, res) {
                 }, { onConflict: 'user_id' });
             }
 
-            // Deep analysis at 30, 60, 90... messages
-            if (count >= 30 && count % 30 === 0) {
-              const deepResult = await analyzeDeepPersonality(userId, count);
+            // プラン別深層分析間隔（premium:15回, その他:30回）
+            const deepInterval = userTier === 'premium' ? 15 : 30;
+            if (count >= deepInterval && count % deepInterval === 0) {
+              // Q&Aブロック管理（5件ごとに分析に含める）
+              const { data: personaRow } = await supabase
+                .from('persona_data').select('qa_analyzed_count').eq('user_id', userId).maybeSingle();
+              const qaAnalyzedCount = personaRow?.qa_analyzed_count || 0;
+              const { data: qaAnswers } = await supabase
+                .from('user_questions').select('question_text, answer_text')
+                .eq('target_user_id', userId).eq('status', 'answered')
+                .order('updated_at', { ascending: false }).limit(50);
+              const newAnswerCount = qaAnswers?.length || 0;
+              const shouldIncludeQA = newAnswerCount - qaAnalyzedCount >= 5;
+
+              // DM自分の発言（直近30件）
+              const { data: dmMessages } = await supabase
+                .from('direct_messages').select('content, created_at')
+                .eq('sender_id', userId)
+                .order('created_at', { ascending: false }).limit(30);
+
+              const deepResult = await analyzeDeepPersonality(
+                userId, count,
+                shouldIncludeQA ? (qaAnswers || []) : [],
+                dmMessages || [],
+                deepInterval
+              );
               if (deepResult) {
-                await supabase
-                  .from('persona_data')
-                  .update({
-                    ...deepResult,
-                    updated_at: new Date().toISOString(),
-                  })
-                  .eq('user_id', userId);
+                const updateData = { ...deepResult, updated_at: new Date().toISOString() };
+                if (shouldIncludeQA) updateData.qa_analyzed_count = newAnswerCount;
+                await supabase.from('persona_data').update(updateData).eq('user_id', userId);
               }
             }
           }
