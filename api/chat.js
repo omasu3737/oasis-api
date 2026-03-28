@@ -17,7 +17,7 @@ function checkRateLimit(key, maxRequests = 60, windowMs = 60000) {
   entry.count++;
   rateLimitMap.set(key, entry);
   // メモリリーク防止：古いエントリを定期削除
-  if (rateLimitMap.size > 10000) {
+  if (rateLimitMap.size > 5000) {
     for (const [k, v] of rateLimitMap) { if (now > v.resetAt) rateLimitMap.delete(k); }
   }
   return entry.count <= maxRequests;
@@ -143,7 +143,7 @@ async function createSummaryIfNeeded(userId) {
       embedding,
     });
   } catch (err) {
-    console.error('createSummary error:', err);
+    console.error('createSummary error:', err?.message || 'Unknown error');
   }
 }
 
@@ -238,6 +238,7 @@ ${conversationText}
       const clean = text.replace(/```json|```/g, '').trim();
       return JSON.parse(clean);
     } catch {
+      console.warn('Failed to parse AI JSON response');
       return null;
     }
   };
@@ -347,6 +348,7 @@ async function analyzeDeepPersonality(userId, conversationCount) {
     try {
       return JSON.parse(text.replace(/```json|```/g, '').trim());
     } catch {
+      console.warn('Failed to parse AI JSON response');
       return null;
     }
   };
@@ -577,7 +579,7 @@ export default async function handler(req, res) {
           // STEP4: Create conversation summary if enough new messages
           await createSummaryIfNeeded(userId);
         } catch (err) {
-          console.error('background task error:', err);
+          console.error('background task error:', err?.message || 'Unknown error');
         }
       })());
     }

@@ -16,7 +16,10 @@ export async function loadMessages(userId, limit = 200) {
 
 // メッセージを保存
 export async function saveMessage(userId, role, content) {
-  await supabase.from('ai_messages').insert({ user_id: userId, role, content });
+  const trimmed = (content || '').trim();
+  if (!trimmed) return null;
+  const finalContent = trimmed.length > 10000 ? trimmed.slice(0, 10000) : trimmed;
+  await supabase.from('ai_messages').insert({ user_id: userId, role, content: finalContent });
 }
 
 // AIにメッセージを送信して返答を取得

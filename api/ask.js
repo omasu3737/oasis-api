@@ -15,7 +15,7 @@ function checkRateLimit(key, maxRequests = 30, windowMs = 60000) {
   if (now > entry.resetAt) { entry.count = 0; entry.resetAt = now + windowMs; }
   entry.count++;
   rateLimitMap.set(key, entry);
-  if (rateLimitMap.size > 10000) {
+  if (rateLimitMap.size > 5000) {
     for (const [k, v] of rateLimitMap) { if (now > v.resetAt) rateLimitMap.delete(k); }
   }
   return entry.count <= maxRequests;
@@ -181,20 +181,23 @@ ${summaryText}
     if (text && user.id !== targetUserId) {
       const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
       if (lastUserMsg?.content) {
-        supabase.from('twin_conversations').insert({
-          target_user_id: targetUserId,
-          asker_user_id: user.id,
-          question: lastUserMsg.content.slice(0, 500),
-          answer: text.slice(0, 1000),
-        }).then(({ error }) => {
+        try {
+          const { error } = await supabase.from('twin_conversations').insert({
+            target_user_id: targetUserId,
+            asker_user_id: user.id,
+            question: lastUserMsg.content.slice(0, 500),
+            answer: text.slice(0, 1000),
+          });
           if (error) console.error('twin_conversations insert error:', error.message);
-        });
+        } catch {
+          // insert failed silently
+        }
       }
     }
 
     res.status(200).json({ content: [{ text }] });
   } catch (e) {
-    console.error('ask handler error:', e);
+    console.error('ask handler error:', e?.message || 'Unknown error');
     res.status(200).json({ content: [{ text: 'もう一度試してください' }] });
   }
 }
