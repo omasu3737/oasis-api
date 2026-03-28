@@ -202,6 +202,14 @@ export default {
   resonance_invite_msg: 'OASISというアプリを使ってみて！AIが自分の性格を分析して、相性の合う人を見つけられるよ。\nhttps://play.google.com/store/apps/details?id=com.omasu.oasis',
   resonance_default_user: 'ユーザー',
   resonance_analyzing: '分析中...',
+  resonance_paywall_title: 'スタンダードで解放',
+  resonance_paywall_desc: '友人・恋愛・仕事の相性で\nぴったりな人を見つけよう',
+  resonance_paywall_standard: 'スタンダード',
+  resonance_paywall_standard_price: '¥580/月',
+  resonance_paywall_standard_desc: '40回/日 + Claude AI',
+  resonance_paywall_premium: 'プレミアム',
+  resonance_paywall_premium_price: '¥1,280/月',
+  resonance_paywall_premium_desc: '無制限 + Claude AI（最高品質）',
 
   // ユーザープロフィール
   user_ask_ai: '{name} の AI に聞いてみる',

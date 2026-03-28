@@ -202,6 +202,14 @@ export default {
   resonance_invite_msg: 'Try OASIS! An AI analyzes your personality and finds people you\'re truly compatible with.\nhttps://play.google.com/store/apps/details?id=com.omasu.oasis',
   resonance_default_user: 'User',
   resonance_analyzing: 'Analyzing...',
+  resonance_paywall_title: 'Unlock with Standard',
+  resonance_paywall_desc: 'Find the right people by\nfriend, romance, and work compatibility',
+  resonance_paywall_standard: 'Standard',
+  resonance_paywall_standard_price: '¥580/mo',
+  resonance_paywall_standard_desc: '40/day + Claude AI',
+  resonance_paywall_premium: 'Premium',
+  resonance_paywall_premium_price: '¥1,280/mo',
+  resonance_paywall_premium_desc: 'Unlimited + Claude AI (Best quality)',
 
   // User Profile
   user_ask_ai: 'Ask {name}\'s AI',

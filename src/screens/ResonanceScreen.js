@@ -1,7 +1,8 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator, RefreshControl, ScrollView, Share, StyleSheet, Text,
+  Modal, RefreshControl, ScrollView, Share, StyleSheet, Text,
   TextInput, TouchableOpacity, View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -36,7 +37,7 @@ function CategoryChip({ label, catKey, isDark }) {
 
 // User card with card styling
 function UserCard({ item, onPress, C, elementColors, isDark, t }) {
-  const { user, personaData, profile, score, bestCategory, bestCategoryKey } = item;
+  const { user, personaData, profile, score, bestCategory, bestCategoryKey, isPremium } = item;
   const displayName = profile?.display_name || user.name || t('resonance_default_user');
   const elementInfo = personaData?.element_type ? elementColors[personaData.element_type] : null;
 
@@ -56,6 +57,9 @@ function UserCard({ item, onPress, C, elementColors, isDark, t }) {
             <Text style={{ fontSize: 15, fontWeight: '600', color: C.t1, flexShrink: 1 }} numberOfLines={1}>
               {displayName}
             </Text>
+            {isPremium && (
+              <Ionicons name="water" size={13} color="#FFD700" />
+            )}
             {bestCategory ? (
               <CategoryChip label={bestCategory} catKey={bestCategoryKey} isDark={isDark} />
             ) : null}
@@ -135,6 +139,8 @@ export default function ResonanceScreen() {
   const [myPersonaData, setMyPersonaData] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [genderFilter, setGenderFilter] = useState('all'); // 'all' | 'male' | 'female' | 'other'
+  const [userTier, setUserTier] = useState('free'); // will be fetched from DB later
+  const [showPaywall, setShowPaywall] = useState(false);
 
   const FILTERS = [
     { key: 'all', label: t('resonance_filter_all') },
@@ -153,6 +159,23 @@ export default function ResonanceScreen() {
 
   // Auto-load on mount
   useEffect(() => { loadUsers(); }, []);
+
+  // Fetch subscription tier
+  useEffect(() => {
+    const fetchTier = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data } = await supabase
+        .from('subscriptions')
+        .select('tier, expires_at')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+      if (data && (!data.expires_at || new Date(data.expires_at) > new Date())) {
+        setUserTier(data.tier);
+      }
+    };
+    fetchTier();
+  }, []);
 
   async function loadUsers(searchQuery = '', filterKey = 'all') {
     setLoading(true);
@@ -176,9 +199,10 @@ export default function ResonanceScreen() {
       const userIds = personas.map(p => p.user_id).filter(id => id !== currentUser.id);
       if (userIds.length === 0) { setUsers([]); setLoading(false); return; }
 
-      const [{ data: userData }, { data: profiles }] = await Promise.all([
+      const [{ data: userData }, { data: profiles }, { data: subscriptions }] = await Promise.all([
         supabase.from('users').select('id, name').in('id', userIds),
         supabase.from('profiles').select('id, display_name, gender, love_preference').in('id', userIds),
+        supabase.from('subscriptions').select('user_id, tier, expires_at').in('user_id', userIds),
       ]);
 
       const { data: myProfile } = await supabase
@@ -193,12 +217,17 @@ export default function ResonanceScreen() {
       personas.forEach(p => { personaMap[p.user_id] = p; });
       const profileMap = {};
       (profiles || []).forEach(p => { profileMap[p.id] = p; });
+      const subscriptionMap = {};
+      (subscriptions || []).forEach(s => { subscriptionMap[s.user_id] = s; });
 
+      const now = new Date();
       let result = userData.map(u => {
         const pd = personaMap[u.id] || null;
         const score = calcResonanceScore(myPD, pd);
         const catScores = calcCategoryScores(myPD, pd);
         const bestCatKey = getBestCategory(catScores);
+        const sub = subscriptionMap[u.id];
+        const isPremium = sub?.tier === 'premium' && (!sub.expires_at || new Date(sub.expires_at) > now);
         return {
           user: u,
           personaData: pd,
@@ -207,6 +236,7 @@ export default function ResonanceScreen() {
           catScores,
           bestCategoryKey: bestCatKey,
           bestCategory: bestCatKey ? CATEGORY_LABELS[bestCatKey] : null,
+          isPremium: !!isPremium,
         };
       });
 
@@ -262,6 +292,10 @@ export default function ResonanceScreen() {
   }
 
   function handleFilterChange(key) {
+    if (key !== 'all' && userTier === 'free') {
+      setShowPaywall(true);
+      return;
+    }
     setActiveFilter(key);
     loadUsers(query, key);
   }
@@ -299,15 +333,26 @@ export default function ResonanceScreen() {
         {/* Filter chips */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 2 }}>
           <View style={{ flexDirection: 'row', gap: 6 }}>
-            {FILTERS.map(f => (
-              <TouchableOpacity
-                key={f.key}
-                style={[s.filter, activeFilter === f.key && s.filterOn]}
-                onPress={() => handleFilterChange(f.key)}
-              >
-                <Text style={[s.filterTxt, activeFilter === f.key && s.filterTxtOn]}>{f.label}</Text>
-              </TouchableOpacity>
-            ))}
+            {FILTERS.map(f => {
+              const isLocked = f.key !== 'all' && userTier === 'free';
+              const isActive = activeFilter === f.key;
+              return (
+                <TouchableOpacity
+                  key={f.key}
+                  style={[s.filter, isActive && s.filterOn, isLocked && { opacity: 0.6 }]}
+                  onPress={() => handleFilterChange(f.key)}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                    {isLocked && (
+                      <Ionicons name="lock-closed" size={10} color={isActive ? C.white : C.tm} />
+                    )}
+                    <Text style={[s.filterTxt, isActive && s.filterTxtOn, isLocked && !isActive && { color: C.tm }]}>
+                      {f.label}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </ScrollView>
       </View>
@@ -371,6 +416,93 @@ export default function ResonanceScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Paywall Modal */}
+      <Modal
+        visible={showPaywall}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPaywall(false)}
+      >
+        <TouchableOpacity
+          style={{ flex: 1, backgroundColor: C.overlay, justifyContent: 'center', alignItems: 'center' }}
+          activeOpacity={1}
+          onPress={() => setShowPaywall(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={() => {}}
+            style={{
+              backgroundColor: C.card,
+              borderRadius: 20,
+              padding: 24,
+              marginHorizontal: 24,
+              width: '88%',
+              borderWidth: 1,
+              borderColor: C.bd,
+            }}
+          >
+            {/* Close button */}
+            <TouchableOpacity
+              onPress={() => setShowPaywall(false)}
+              style={{ position: 'absolute', top: 14, right: 14, padding: 4 }}
+            >
+              <Ionicons name="close" size={20} color={C.tm} />
+            </TouchableOpacity>
+
+            {/* Title */}
+            <Text style={{ fontSize: 18, fontWeight: '700', color: C.t1, marginBottom: 8, marginRight: 28 }}>
+              {t('resonance_paywall_title')}
+            </Text>
+
+            {/* Description */}
+            <Text style={{ fontSize: 13, color: C.t2, lineHeight: 20, marginBottom: 20 }}>
+              {t('resonance_paywall_desc')}
+            </Text>
+
+            {/* Standard plan row */}
+            <View style={{
+              flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+              backgroundColor: C.bs, borderRadius: 12, padding: 14, marginBottom: 10,
+              borderWidth: 1, borderColor: C.bd,
+            }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: C.t1, marginBottom: 2 }}>
+                  {t('resonance_paywall_standard')}
+                </Text>
+                <Text style={{ fontSize: 11, color: C.tm }}>
+                  {t('resonance_paywall_standard_desc')}
+                </Text>
+              </View>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: C.p }}>
+                {t('resonance_paywall_standard_price')}
+              </Text>
+            </View>
+
+            {/* Premium plan row */}
+            <View style={{
+              flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+              backgroundColor: C.pp, borderRadius: 12, padding: 14,
+              borderWidth: 1, borderColor: C.bm,
+            }}>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 2 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: C.t1 }}>
+                    {t('resonance_paywall_premium')}
+                  </Text>
+                  <Ionicons name="water" size={12} color="#FFD700" />
+                </View>
+                <Text style={{ fontSize: 11, color: C.tm }}>
+                  {t('resonance_paywall_premium_desc')}
+                </Text>
+              </View>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: C.p }}>
+                {t('resonance_paywall_premium_price')}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
