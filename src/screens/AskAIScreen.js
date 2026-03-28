@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import UserIcon from '../components/UserIcon';
 import { useTheme } from '../context/ThemeContext';
 import { useI18n } from '../i18n';
+import { supabase } from '../supabase';
 
 const API_URL = 'https://oasis-api-nine.vercel.app/api/ask';
 
@@ -37,9 +38,13 @@ export default function AskAIScreen() {
     setSending(true);
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch(API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({
           messages: newMessages,
           targetUserId: userId,

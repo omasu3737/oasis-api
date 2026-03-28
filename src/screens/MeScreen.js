@@ -89,7 +89,7 @@ function ProfileEditModal({ visible, onClose, profile, onSave, currentUserId }) 
   const [bio, setBio] = useState('');
   const [privateTopics, setPrivateTopics] = useState('');
   const [saving, setSaving] = useState(false);
-  const [avatarUri, setAvatarUri] = useState(null); // 新規選択した画像
+  const [avatarUri, setAvatarUri] = useState(null);     // 新規選択した画像URI（プレビュー用）
   const [currentAvatar, setCurrentAvatar] = useState(null); // 既存のURL
 
   useEffect(() => {
@@ -130,8 +130,14 @@ function ProfileEditModal({ visible, onClose, profile, onSave, currentUserId }) 
     // アバターのアップロード（選択されていれば）
     let avatarUrl = currentAvatar;
     if (avatarUri && currentUserId) {
-      const uploaded = await uploadAvatar(currentUserId, avatarUri);
-      if (uploaded) avatarUrl = uploaded;
+      const { url, errorMessage } = await uploadAvatar(currentUserId, avatarUri);
+      if (url) {
+        avatarUrl = url;
+      } else {
+        setSaving(false);
+        Alert.alert(t('error'), `写真のアップロードに失敗しました。\n${errorMessage || 'ストレージ設定を確認してください'}`);
+        return;
+      }
     }
 
     const ok = await onSave({

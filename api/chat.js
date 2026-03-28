@@ -8,6 +8,21 @@ const supabase = createClient(
 
 const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
+// シンプルなインメモリレート制限（1分間に60リクエストまで）
+const rateLimitMap = new Map();
+function checkRateLimit(key, maxRequests = 60, windowMs = 60000) {
+  const now = Date.now();
+  const entry = rateLimitMap.get(key) || { count: 0, resetAt: now + windowMs };
+  if (now > entry.resetAt) { entry.count = 0; entry.resetAt = now + windowMs; }
+  entry.count++;
+  rateLimitMap.set(key, entry);
+  // メモリリーク防止：古いエントリを定期削除
+  if (rateLimitMap.size > 10000) {
+    for (const [k, v] of rateLimitMap) { if (now > v.resetAt) rateLimitMap.delete(k); }
+  }
+  return entry.count <= maxRequests;
+}
+
 async function callGemini(systemPrompt, userPrompt, retries = 2) {
   for (let i = 0; i <= retries; i++) {
     const response = await fetch(
@@ -135,12 +150,13 @@ async function createSummaryIfNeeded(userId) {
 // --- Personality Analysis (v3.0: 正しい5軸) ---
 
 async function analyzePersonality(userId) {
-  // 過去の要約 + 直近の会話を使って分析
+  // 過去の要約 + 直近の会話を使って分析（最新20件に制限）
   const { data: summaries } = await supabase
     .from('conversation_summaries')
     .select('summary')
     .eq('user_id', userId)
-    .order('created_at', { ascending: true });
+    .order('created_at', { ascending: false })
+    .limit(20);
 
   const { data: recentMsgs } = await supabase
     .from('ai_messages')
@@ -300,12 +316,13 @@ ${conversationText}
 async function analyzeDeepPersonality(userId, conversationCount) {
   if (conversationCount < 30) return null;
 
-  // 過去の要約 + 直近の会話を取得
+  // 過去の要約 + 直近の会話を取得（最新20件に制限）
   const { data: summaries } = await supabase
     .from('conversation_summaries')
     .select('summary')
     .eq('user_id', userId)
-    .order('created_at', { ascending: true });
+    .order('created_at', { ascending: false })
+    .limit(20);
 
   const { data: recentMsgs } = await supabase
     .from('ai_messages')
@@ -428,6 +445,28 @@ export default async function handler(req, res) {
   if (!messages || !Array.isArray(messages)) {
     return res.status(400).json({ error: 'invalid request' });
   }
+  // メッセージ数・文字数制限（DoS対策）
+  if (messages.length > 100) {
+    return res.status(400).json({ error: 'too many messages' });
+  }
+  for (const msg of messages) {
+    if (!msg.role || typeof msg.content !== 'string' || msg.content.length > 3000) {
+      return res.status(400).json({ error: 'invalid message format' });
+    }
+  }
+  // レート制限チェック（IPまたはuserId単位）
+  const rateLimitKey = userId || req.headers['x-forwarded-for'] || 'unknown';
+  if (!checkRateLimit(rateLimitKey, 60, 60000)) {
+    return res.status(429).json({ error: 'Too many requests. Please wait.' });
+  }
+
+  // userIdがある場合はUUIDフォーマット検証
+  if (userId) {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(userId)) {
+      return res.status(400).json({ error: 'invalid userId' });
+    }
+  }
 
   // STEP4: Retrieve relevant memories for context
   let memoryContext = '';
@@ -536,7 +575,8 @@ export default async function handler(req, res) {
 
     res.status(200).json({ content: [{ text }] });
   } catch (e) {
-    console.error('handler error:', e);
-    res.status(200).json({ content: [{ text: 'もう一度試してください' }] });
+    // 内部エラーをログに残すが、詳細をクライアントには返さない
+    console.error('handler error:', e?.message || 'unknown');
+    res.status(500).json({ content: [{ text: 'もう一度試してください' }] });
   }
 }

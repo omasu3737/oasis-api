@@ -25,8 +25,8 @@ export default async function handler(req, res) {
     // Delete user data from all tables in order (FK constraints)
     await Promise.all([
       supabase.from('direct_messages').delete().or(`sender_id.eq.${userId},receiver_id.eq.${userId}`),
-      supabase.from('user_questions').delete().or(`target_user_id.eq.${userId},asker_id.eq.${userId}`),
-      supabase.from('user_reports').delete().or(`reporter_id.eq.${userId},reported_id.eq.${userId}`),
+      supabase.from('user_questions').delete().eq('target_user_id', userId),
+      supabase.from('user_reports').delete().or(`reporter_id.eq.${userId},reported_user_id.eq.${userId}`),
     ]);
 
     await Promise.all([

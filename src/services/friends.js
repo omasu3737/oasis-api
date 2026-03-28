@@ -61,7 +61,7 @@ export async function getFriendshipStatus(userId, otherUserId) {
     .from('friends')
     .select('id, status, requester_id')
     .or(`and(requester_id.eq.${userId},receiver_id.eq.${otherUserId}),and(requester_id.eq.${otherUserId},receiver_id.eq.${userId})`)
-    .single();
+    .maybeSingle();
 
   if (!data) return { status: 'none', id: null };
   return { status: data.status, id: data.id, isSender: data.requester_id === userId };

@@ -7,13 +7,47 @@ const supabase = createClient(
 
 const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
+// レート制限（1分間に30リクエストまで）
+const rateLimitMap = new Map();
+function checkRateLimit(key, maxRequests = 30, windowMs = 60000) {
+  const now = Date.now();
+  const entry = rateLimitMap.get(key) || { count: 0, resetAt: now + windowMs };
+  if (now > entry.resetAt) { entry.count = 0; entry.resetAt = now + windowMs; }
+  entry.count++;
+  rateLimitMap.set(key, entry);
+  if (rateLimitMap.size > 10000) {
+    for (const [k, v] of rateLimitMap) { if (now > v.resetAt) rateLimitMap.delete(k); }
+  }
+  return entry.count <= maxRequests;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
+  // 認証チェック（JWTトークン必須）
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return res.status(401).json({ error: 'Unauthorized' });
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+  if (authError || !user) return res.status(401).json({ error: 'Unauthorized' });
+
+  // レート制限（ユーザー単位）
+  if (!checkRateLimit(user.id, 30, 60000)) {
+    return res.status(429).json({ error: 'Too many requests. Please wait.' });
+  }
+
   const { messages, targetUserId } = req.body;
 
+  // 入力バリデーション
   if (!messages || !Array.isArray(messages) || !targetUserId) {
     return res.status(400).json({ error: 'invalid request' });
+  }
+  if (messages.length > 30) {
+    return res.status(400).json({ error: 'too many messages' });
+  }
+  // UUIDフォーマット検証
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(targetUserId)) {
+    return res.status(400).json({ error: 'invalid targetUserId' });
   }
 
   try {
