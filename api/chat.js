@@ -440,7 +440,16 @@ ${ctx}
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { messages, system, userId } = req.body;
+  // JWT認証（必須）
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return res.status(401).json({ error: 'Unauthorized' });
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+  if (authError || !user) return res.status(401).json({ error: 'Unauthorized' });
+
+  // userIdはJWTから取得（クライアント送信値は使わない）
+  const userId = user.id;
+
+  const { messages, system } = req.body;
 
   if (!messages || !Array.isArray(messages)) {
     return res.status(400).json({ error: 'invalid request' });
@@ -454,18 +463,13 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'invalid message format' });
     }
   }
-  // レート制限チェック（IPまたはuserId単位）
-  const rateLimitKey = userId || req.headers['x-forwarded-for'] || 'unknown';
-  if (!checkRateLimit(rateLimitKey, 60, 60000)) {
-    return res.status(429).json({ error: 'Too many requests. Please wait.' });
+  // systemプロンプトの長さ制限
+  if (system && typeof system === 'string' && system.length > 5000) {
+    return res.status(400).json({ error: 'system prompt too long' });
   }
-
-  // userIdがある場合はUUIDフォーマット検証
-  if (userId) {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(userId)) {
-      return res.status(400).json({ error: 'invalid userId' });
-    }
+  // レート制限チェック（ユーザー単位）
+  if (!checkRateLimit(userId, 60, 60000)) {
+    return res.status(429).json({ error: 'Too many requests. Please wait.' });
   }
 
   // STEP4: Retrieve relevant memories for context

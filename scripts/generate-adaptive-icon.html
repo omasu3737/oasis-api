@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>OASIS Adaptive Icon Generator</title>
+  <style>
+    body { background: #1a1a2e; display: flex; flex-direction: column; align-items: center; padding: 40px; font-family: sans-serif; color: #fff; gap: 24px; }
+    .preview-grid { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; justify-content: center; }
+    .preview-item { display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 13px; color: #aaa; }
+    .circle-clip { border-radius: 50%; overflow: hidden; }
+    .rounded-clip { border-radius: 22%; overflow: hidden; }
+    button { padding: 12px 32px; background: linear-gradient(135deg, #9b6dff, #ec4899); border: none; border-radius: 12px; color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; }
+    button:hover { opacity: 0.85; }
+    h2 { margin: 0; font-size: 20px; }
+    .info { background: #2a2645; border-radius: 12px; padding: 16px 24px; font-size: 13px; color: #b8b0cc; line-height: 1.8; max-width: 500px; text-align: center; }
+    .upload-area { border: 2px dashed #6a3fc8; border-radius: 16px; padding: 28px 48px; text-align: center; cursor: pointer; background: #1e1a38; }
+    .upload-area:hover { border-color: #9b6dff; }
+    .slider-wrap { background: #1e1a38; border-radius: 14px; padding: 18px 28px; display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 480px; box-sizing: border-box; }
+    input[type=range] { flex: 1; accent-color: #9b6dff; cursor: pointer; }
+    #status { font-size: 13px; color: #9b6dff; min-height: 20px; text-align: center; }
+  </style>
+</head>
+<body>
+  <h2>OASIS Adaptive Icon — Foreground Resizer</h2>
+  <p style="color:#7a7090; margin:0; font-size:13px;">元のしずく画像をそのまま、正しいサイズに調整します</p>
+
+  <!-- ファイル選択 -->
+  <div class="upload-area" id="uploadArea">
+    <input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp" style="display:none;">
+    <div style="font-size:36px; margin-bottom:10px;">🖼️</div>
+    <div style="font-size:15px; font-weight:600; color:#c0a8ff; margin-bottom:6px;">クリックして元のアイコンを読み込む</div>
+    <div style="font-size:12px; color:#7a6a9a;">android-icon-foreground.png を選択してください</div>
+  </div>
+
+  <div id="status"></div>
+
+  <!-- メインキャンバス（非表示・1024x1024） -->
+  <canvas id="main" width="1024" height="1024" style="display:none;"></canvas>
+
+  <!-- プレビューセクション（読み込み後に表示） -->
+  <div id="previewSection" style="display:none; flex-direction:column; align-items:center; gap:24px; width:100%;">
+
+    <!-- スライダー -->
+    <div class="slider-wrap">
+      <div style="font-size:13px; color:#c0a8ff; font-weight:600;">しずくのサイズ調整</div>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span style="font-size:12px; color:#666; white-space:nowrap;">小さく</span>
+        <input type="range" id="scaleSlider" min="50" max="80" value="65" step="1">
+        <span style="font-size:12px; color:#666; white-space:nowrap;">大きく</span>
+        <span id="scaleVal" style="font-size:20px; font-weight:700; color:#c0a8ff; min-width:48px; text-align:right;">65%</span>
+      </div>
+      <div id="safeMsg" style="font-size:12px; color:#6dbf7e; text-align:center;">
+        ✅ 安全ゾーン内（66%以内）— どの端末でも全体が表示されます
+      </div>
+    </div>
+
+    <!-- プレビューグリッド -->
+    <div class="preview-grid">
+      <div class="preview-item">
+        <div class="circle-clip" style="width:150px;height:150px;background:#fff;">
+          <canvas id="prev-circle" width="150" height="150"></canvas>
+        </div>
+        <span>円形（白背景）</span>
+      </div>
+      <div class="preview-item">
+        <div class="rounded-clip" style="width:150px;height:150px;background:#fff;">
+          <canvas id="prev-rounded" width="150" height="150"></canvas>
+        </div>
+        <span>角丸（白背景）</span>
+      </div>
+      <div class="preview-item">
+        <div class="circle-clip" style="width:150px;height:150px;background:#0f0d18;">
+          <canvas id="prev-dark" width="150" height="150"></canvas>
+        </div>
+        <span>円形（ダーク）</span>
+      </div>
+      <div class="preview-item">
+        <canvas id="prev-full" width="150" height="150" style="border:1px dashed #555;"></canvas>
+        <span>透明背景</span>
+      </div>
+    </div>
+
+    <!-- 安全ゾーン付き大プレビュー -->
+    <div style="font-size:13px; color:#9080c0; margin-bottom:-16px;">安全ゾーン確認（赤点線の内側にしずくが収まればOK）</div>
+    <div class="preview-grid">
+      <div class="preview-item">
+        <div style="position:relative; width:210px; height:210px;">
+          <div class="circle-clip" style="position:absolute;width:210px;height:210px;background:#fff;">
+            <canvas id="prev-lg-circle" width="210" height="210"></canvas>
+          </div>
+          <!-- 66% safe zone: 210*0.66=138.6px, offset=(210-138.6)/2=35.7px -->
+          <div style="position:absolute;left:36px;top:36px;width:139px;height:139px;
+            border:2px dashed rgba(255,80,80,0.8);border-radius:50%;pointer-events:none;"></div>
+        </div>
+        <span>円形</span>
+      </div>
+      <div class="preview-item">
+        <div style="position:relative; width:210px; height:210px;">
+          <div class="rounded-clip" style="position:absolute;width:210px;height:210px;background:#fff;">
+            <canvas id="prev-lg-rounded" width="210" height="210"></canvas>
+          </div>
+          <div style="position:absolute;left:36px;top:36px;width:139px;height:139px;
+            border:2px dashed rgba(255,80,80,0.8);border-radius:22%;pointer-events:none;"></div>
+        </div>
+        <span>角丸（白）</span>
+      </div>
+      <div class="preview-item">
+        <div style="position:relative; width:210px; height:210px;">
+          <div class="rounded-clip" style="position:absolute;width:210px;height:210px;background:#0f0d18;">
+            <canvas id="prev-lg-dark" width="210" height="210"></canvas>
+          </div>
+          <div style="position:absolute;left:36px;top:36px;width:139px;height:139px;
+            border:2px dashed rgba(255,80,80,0.8);border-radius:22%;pointer-events:none;"></div>
+        </div>
+        <span>角丸（ダーク）</span>
+      </div>
+    </div>
+
+    <button id="dlBtn">📥 android-icon-foreground.png をダウンロード</button>
+  </div>
+
+  <script>
+    const CANVAS_SIZE = 1024;
+    let loadedImage = null;
+    let currentScale = 0.65;
+
+    const mainCanvas = document.getElementById('main');
+    const mainCtx = mainCanvas.getContext('2d');
+
+    // ファイル選択
+    document.getElementById('uploadArea').addEventListener('click', function() {
+      document.getElementById('fileInput').click();
+    });
+
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      document.getElementById('status').textContent = '読み込み中...';
+
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        const img = new Image();
+        img.onload = function() {
+          loadedImage = img;
+          redraw();
+          document.getElementById('previewSection').style.display = 'flex';
+          document.getElementById('status').textContent = '✅ 読み込み完了！スライダーでサイズを調整してください';
+        };
+        img.onerror = function() {
+          document.getElementById('status').textContent = '❌ 読み込みに失敗しました';
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // スライダー
+    document.getElementById('scaleSlider').addEventListener('input', function() {
+      currentScale = parseInt(this.value) / 100;
+      document.getElementById('scaleVal').textContent = this.value + '%';
+
+      const safeMsg = document.getElementById('safeMsg');
+      if (currentScale > 0.66) {
+        safeMsg.style.color = '#ff8060';
+        safeMsg.textContent = '⚠️ 安全ゾーン超過（' + this.value + '%）— 端末によってはしずくの端が切れます';
+      } else {
+        safeMsg.style.color = '#6dbf7e';
+        safeMsg.textContent = '✅ 安全ゾーン内（' + this.value + '%）— どの端末でも全体が表示されます';
+      }
+
+      if (loadedImage) redraw();
+    });
+
+    // ダウンロード
+    document.getElementById('dlBtn').addEventListener('click', function() {
+      const link = document.createElement('a');
+      link.download = 'android-icon-foreground.png';
+      link.href = mainCanvas.toDataURL('image/png');
+      link.click();
+    });
+
+    function redraw() {
+      const drawSize = Math.round(CANVAS_SIZE * currentScale);
+      const drawOffset = Math.round((CANVAS_SIZE - drawSize) / 2);
+
+      mainCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+      mainCtx.drawImage(loadedImage, drawOffset, drawOffset, drawSize, drawSize);
+
+      const previews = [
+        ['prev-circle',    150],
+        ['prev-rounded',   150],
+        ['prev-dark',      150],
+        ['prev-full',      150],
+        ['prev-lg-circle', 210],
+        ['prev-lg-rounded',210],
+        ['prev-lg-dark',   210],
+      ];
+
+      const bgMap = {
+        'prev-circle':     '#ffffff',
+        'prev-rounded':    '#ffffff',
+        'prev-dark':       '#0f0d18',
+        'prev-full':       null,
+        'prev-lg-circle':  '#ffffff',
+        'prev-lg-rounded': '#ffffff',
+        'prev-lg-dark':    '#0f0d18',
+      };
+
+      previews.forEach(([id, size]) => {
+        const c = document.getElementById(id);
+        const ctx = c.getContext('2d');
+        ctx.clearRect(0, 0, size, size);
+        const bg = bgMap[id];
+        if (bg) {
+          ctx.fillStyle = bg;
+          ctx.fillRect(0, 0, size, size);
+        }
+        ctx.drawImage(mainCanvas, 0, 0, size, size);
+      });
+    }
+  </script>
+</body>
+</html>

@@ -24,15 +24,21 @@ export async function saveMessage(userId, role, content) {
 export async function sendToAI(messages, userId) {
   const recentMessages = messages.slice(-20);
 
+  // JWTトークンを取得してAuthorizationヘッダーに付与
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new Error('認証エラー');
+
   const res = await fetch(API_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`,
+    },
     body: JSON.stringify({
       model: 'gemini-2.5-flash',
       max_tokens: 1000,
       system: SYSTEM_PROMPT,
       messages: recentMessages.map(m => ({ role: m.role, content: m.content })),
-      userId,
     }),
   });
 
