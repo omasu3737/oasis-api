@@ -474,6 +474,20 @@ export default async function handler(req, res) {
     return res.status(429).json({ error: 'Too many requests. Please wait.' });
   }
 
+  // 1日200回ソフトリミットチェック（Premiumユーザー向け自然な締め）
+  let isSoftLimit = false;
+  try {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const { count: todayCount } = await supabase
+      .from('ai_messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('role', 'user')
+      .gte('created_at', todayStart.toISOString());
+    isSoftLimit = (todayCount || 0) >= 200;
+  } catch { /* ソフトリミット取得失敗は無視して続行 */ }
+
   // STEP4: Retrieve relevant memories for context
   let memoryContext = '';
   if (userId) {
@@ -507,7 +521,8 @@ export default async function handler(req, res) {
           body: JSON.stringify({
             system_instruction: {
               parts: [{
-                text: (system || '') + memoryContext + '\n\n重要：マークダウン記号（**、*、#など）は絶対に使わないこと。プレーンテキストのみで回答すること。簡潔に3文以内で答えること。'
+                text: (system || '') + memoryContext + '\n\n重要：マークダウン記号（**、*、#など）は絶対に使わないこと。プレーンテキストのみで回答すること。簡潔に3文以内で答えること。' +
+                  (isSoftLimit ? '\n\n【今日の締めくくり】今日はたくさん話してくれた。この返答をしっかりした後、会話の流れの中で自然に「今日はここまでにしようか」「続きはまた明日聞かせて」という雰囲気で締めくくること。システムメッセージのように言わず、あくまで会話として自然に。' : '')
               }]
             },
             contents: geminiMessages,
