@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -76,7 +77,7 @@ export default function AIChatScreen() {
           <Text style={s.backTxt}>‹</Text>
         </TouchableOpacity>
         <View style={s.aiOrb}>
-          <Text style={{ fontSize: 16 }}>✦</Text>
+          <Ionicons name="water-outline" size={18} color={C.p} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={s.navName}>{t('chat_nav_name')}</Text>

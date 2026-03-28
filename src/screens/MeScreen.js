@@ -586,7 +586,7 @@ export default function MeScreen() {
         {/* First-time CTA (new users with 0 conversations) */}
         {!loading && convCount === 0 && !personaData ? (
           <TouchableOpacity style={s.ctaCard} onPress={() => navigation.navigate('AIChat')}>
-            <Text style={s.ctaEmoji}>✦</Text>
+            <Ionicons name="water-outline" size={32} color={C.white} style={{ marginBottom: 8 }} />
             <Text style={s.ctaTitle}>{t('me_cta_title')}</Text>
             <Text style={s.ctaSub}>{t('me_cta_desc_long')}</Text>
             <View style={s.ctaBtn}>
