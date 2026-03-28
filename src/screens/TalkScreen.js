@@ -141,7 +141,7 @@ export default function TalkScreen() {
         {/* AIチャットカード */}
         <TouchableOpacity style={s.aiCard} onPress={() => navigation.navigate('AIChat')}>
           <View style={s.aiOrb}>
-            <Ionicons name="sparkles" size={22} color={C.t1} />
+            <Ionicons name="water-outline" size={22} color={C.t1} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={s.aiName}>{t('talk_ai_name')}</Text>

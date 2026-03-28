@@ -770,7 +770,7 @@ export default function MeScreen() {
         </Text>
         {questions.length === 0 ? (
           <View style={s.qaEmptyCard}>
-            <Ionicons name="chatbubbles-outline" size={32} color={C.t3} style={{ marginBottom: 10 }} />
+            <Ionicons name="chatbubbles-outline" size={32} color={C.t2} style={{ marginBottom: 10 }} />
             <Text style={s.qaEmptyTitle}>{t('me_qa_empty_title')}</Text>
             <Text style={s.qaEmptyHint}>{t('me_qa_empty_hint')}</Text>
           </View>
