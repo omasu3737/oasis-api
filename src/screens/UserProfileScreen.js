@@ -63,6 +63,7 @@ export default function UserProfileScreen() {
   const [qText, setQText] = useState('');
   const [qSending, setQSending] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [isTheirPremium, setIsTheirPremium] = useState(false);
 
   useEffect(() => { loadData(); }, []);
 
@@ -96,6 +97,15 @@ export default function UserProfileScreen() {
           .single();
         if (myPd) setMyPersona(myPd);
       }
+
+      // 相手のサブスクリプション確認
+      const { data: theirSub } = await supabase
+        .from('subscriptions')
+        .select('tier, expires_at')
+        .eq('user_id', userId)
+        .maybeSingle();
+      const premiumActive = theirSub && theirSub.tier === 'premium' && (!theirSub.expires_at || new Date(theirSub.expires_at) > new Date());
+      setIsTheirPremium(!!premiumActive);
     } catch (e) {
       console.log('UserProfile loadData error:', e);
     } finally {
@@ -161,7 +171,12 @@ export default function UserProfileScreen() {
                 </Text>
               </View>
             ) : null}
-            <Text style={s.name}>{displayName}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <Text style={s.name}>{displayName}</Text>
+              {isTheirPremium ? (
+                <Ionicons name="water" size={14} color="#FFD700" />
+              ) : null}
+            </View>
             {persona?.persona_type ? (
               <Text style={s.typeName}>{persona.persona_type}</Text>
             ) : null}

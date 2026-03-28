@@ -38,16 +38,39 @@ function Divider() {
 }
 
 // Locked card (blurred + compact)
-function LockedCard({ icon, label, hint }) {
+function LockedCard({ icon, label, hint, isDeepAnalysis, userTier, convCount }) {
   const { colors: C, isDark } = useTheme();
   const s = getStyles(C);
+
+  let displayHint = hint;
+  if (isDeepAnalysis) {
+    if (userTier === 'premium') {
+      displayHint = '15回会話で解放';
+    } else if (userTier === 'standard') {
+      displayHint = '30回会話で解放';
+    } else {
+      displayHint = '30回会話で解放 または スタンダードへ';
+    }
+  }
+
   return (
     <View style={s.lockedCard}>
       <View style={s.lockedBlur}>
         <Ionicons name={icon} size={20} color={isDark ? C.t1 : C.t3} />
         <View style={{ flex: 1 }}>
           <Text style={s.lockedLabel}>{label}</Text>
-          <Text style={s.lockedHint}>{hint}</Text>
+          <Text style={s.lockedHint}>{displayHint}</Text>
+          {isDeepAnalysis && userTier === 'free' ? (
+            <TouchableOpacity
+              onPress={() => Alert.alert(
+                'プランについて',
+                'スタンダード ¥580/月\n・1日50回 + Claude AI分析\n\nプレミアム ¥1,280/月\n・無制限 + 全Claude AI\n・深層分析が15回で解放',
+                [{ text: '閉じる', style: 'cancel' }]
+              )}
+            >
+              <Text style={{ fontSize: 11, color: C.p, marginTop: 4 }}>プランを見る →</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
         <View style={s.lockIcon}>
           <Ionicons name="lock-closed" size={16} color={isDark ? C.t2 : C.t3} />
@@ -421,6 +444,7 @@ export default function MeScreen() {
   const [twinEnabled, setTwinEnabled] = useState(true);
   const [twinConversations, setTwinConversations] = useState([]);
   const [showTwinLog, setShowTwinLog] = useState(false);
+  const [userTier, setUserTier] = useState('free');
 
   useEffect(() => { loadData(); }, []);
 
@@ -448,16 +472,19 @@ export default function MeScreen() {
       setProfile(p || { display_name: user.email?.split('@')[0] || t('me_default_user') });
       setTwinEnabled(p?.twin_enabled !== false); // デフォルトtrue（nullやundefinedはtrue扱い）
 
-      const [count, persona, qs, twinLogs] = await Promise.all([
+      const [count, persona, qs, twinLogs, subData] = await Promise.all([
         getConversationCount(user.id),
         loadPersona(user.id),
         getMyQuestions(user.id),
         getMyTwinConversations(user.id),
+        supabase.from('subscriptions').select('tier, expires_at').eq('user_id', user.id).maybeSingle().then(r => r.data),
       ]);
       setConvCount(count);
       if (persona) setPersonaData(persona);
       setQuestions(qs);
       setTwinConversations(twinLogs);
+      const isActive = subData && (!subData.expires_at || new Date(subData.expires_at) > new Date());
+      setUserTier(isActive ? subData.tier : 'free');
     } catch (e) {
       console.log('loadData error:', e);
     } finally {
@@ -543,7 +570,12 @@ export default function MeScreen() {
               >OASIS</SvgText>
             </Svg>
             <View style={{ height: 6 }} />
-            <Text style={s.name}>{userName}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={s.name}>{userName}</Text>
+              {userTier === 'premium' ? (
+                <Ionicons name="water" size={16} color="#FFD700" />
+              ) : null}
+            </View>
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <TouchableOpacity style={s.headerIcon} onPress={() => setShowSettings(true)}>
@@ -608,6 +640,11 @@ export default function MeScreen() {
             <View style={s.barWrap}>
               <View style={[s.barFill, { width: `${barPct}%` }]} />
             </View>
+            {userTier === 'premium' && convCount >= 15 ? (
+              <Text style={{ fontSize: 10, color: C.tm, marginTop: 4 }}>深層分析：15回ごとに更新</Text>
+            ) : convCount >= 30 ? (
+              <Text style={{ fontSize: 10, color: C.tm, marginTop: 4 }}>深層分析：30回ごとに更新</Text>
+            ) : null}
           </View>
         </View>
 
@@ -666,7 +703,7 @@ export default function MeScreen() {
             <Text style={s.compatText}>{personaData.compatibility_text}</Text>
           </View>
         ) : (
-          <LockedCard icon="people-outline" label={t('me_compatibility')} hint={t('me_locked_30')} />
+          <LockedCard icon="people-outline" label={t('me_compatibility')} hint={t('me_locked_30')} isDeepAnalysis userTier={userTier} convCount={convCount} />
         )}
 
         {/* Value Priorities */}
@@ -689,7 +726,7 @@ export default function MeScreen() {
             <Text style={s.analysisSub}>{personaData.values_profile.worldview}</Text>
           </View>
         ) : (
-          <LockedCard icon="bar-chart-outline" label={t('me_values')} hint={t('me_locked_30')} />
+          <LockedCard icon="bar-chart-outline" label={t('me_values')} hint={t('me_locked_30')} isDeepAnalysis userTier={userTier} convCount={convCount} />
         )}
 
         {/* Attachment Style */}
@@ -701,7 +738,7 @@ export default function MeScreen() {
             tags={personaData.attachment_style.tags || []}
           />
         ) : (
-          <LockedCard icon="heart-outline" label={t('me_attachment')} hint={t('me_locked_30')} />
+          <LockedCard icon="heart-outline" label={t('me_attachment')} hint={t('me_locked_30')} isDeepAnalysis userTier={userTier} convCount={convCount} />
         )}
 
         {/* Stress Response */}
@@ -713,7 +750,7 @@ export default function MeScreen() {
             tags={personaData.stress_response.tags || []}
           />
         ) : (
-          <LockedCard icon="flash-outline" label={t('me_stress')} hint={t('me_locked_30')} />
+          <LockedCard icon="flash-outline" label={t('me_stress')} hint={t('me_locked_30')} isDeepAnalysis userTier={userTier} convCount={convCount} />
         )}
 
         {/* Energy Source */}
@@ -726,7 +763,7 @@ export default function MeScreen() {
             <Text style={s.analysisSub}>{personaData.energy_source.drain || ''}</Text>
           </View>
         ) : (
-          <LockedCard icon="battery-charging-outline" label={t('me_energy')} hint={t('me_locked_30')} />
+          <LockedCard icon="battery-charging-outline" label={t('me_energy')} hint={t('me_locked_30')} isDeepAnalysis userTier={userTier} convCount={convCount} />
         )}
 
         {/* Thinking Style */}
@@ -738,7 +775,7 @@ export default function MeScreen() {
             tags={personaData.thinking_style.tags || []}
           />
         ) : (
-          <LockedCard icon="bulb-outline" label={t('me_thinking')} hint={t('me_locked_30')} />
+          <LockedCard icon="bulb-outline" label={t('me_thinking')} hint={t('me_locked_30')} isDeepAnalysis userTier={userTier} convCount={convCount} />
         )}
 
         <Divider />
