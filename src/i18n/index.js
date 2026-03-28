@@ -2,8 +2,9 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ja from './ja';
 import en from './en';
+import ko from './ko';
 
-const translations = { ja, en };
+const translations = { ja, en, ko };
 const STORAGE_KEY = 'oasis_language';
 
 const I18nContext = createContext();
@@ -48,4 +49,5 @@ export function useI18n() {
 export const LANGUAGES = [
   { code: 'ja', label: '日本語' },
   { code: 'en', label: 'English' },
+  { code: 'ko', label: '한국어' },
 ];

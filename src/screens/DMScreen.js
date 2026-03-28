@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -66,7 +67,7 @@ export default function DMScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
       <View style={s.nav}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={s.back}>‹</Text>
+          <Ionicons name="chevron-back" size={28} color={C.t1} />
         </TouchableOpacity>
         <UserIcon name={friendName} size={36} />
         <View style={{ flex: 1 }}>
@@ -94,7 +95,7 @@ export default function DMScreen() {
           >
             {messages.length === 0 ? (
               <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-                <Text style={{ fontSize: 28, marginBottom: 8 }}>👋</Text>
+                <Ionicons name="chatbubbles-outline" size={48} color={C.t3} style={{ marginBottom: 8 }} />
                 <Text style={{ fontSize: 13, color: C.tm }}>{t('dm_empty')}</Text>
               </View>
             ) : (
@@ -124,7 +125,7 @@ export default function DMScreen() {
             returnKeyType="send"
           />
           <TouchableOpacity style={s.sendBtn} onPress={handleSend}>
-            <Text style={{ color: C.white, fontSize: 16 }}>↑</Text>
+            <Ionicons name="arrow-up" size={20} color={'#fff'} />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

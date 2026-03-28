@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
 import {
@@ -12,10 +13,12 @@ import UserIcon from '../components/UserIcon';
 import { useTheme } from '../context/ThemeContext';
 import { useI18n, LANGUAGES } from '../i18n';
 import * as ImagePicker from 'expo-image-picker';
+import { supabase } from '../supabase';
 import { getCurrentUser, signOut, deleteAccount } from '../services/auth';
 import { getConversationCount, loadPersona } from '../services/persona';
 import { loadProfile, saveProfile, uploadAvatar } from '../services/profile';
 import { getMyQuestions, answerQuestion } from '../services/questions';
+import { getMyTwinConversations } from '../services/twin';
 
 function SLabel({ text, sub }) {
   const { colors: C } = useTheme();
@@ -41,13 +44,13 @@ function LockedCard({ icon, label, hint }) {
   return (
     <View style={s.lockedCard}>
       <View style={s.lockedBlur}>
-        <Text style={s.lockedIcon}>{icon}</Text>
+        <Ionicons name={icon} size={20} color={C.t3} />
         <View style={{ flex: 1 }}>
           <Text style={s.lockedLabel}>{label}</Text>
           <Text style={s.lockedHint}>{hint}</Text>
         </View>
         <View style={s.lockIcon}>
-          <Text style={{ fontSize: 12 }}>🔒</Text>
+          <Ionicons name="lock-closed" size={16} color={C.t3} />
         </View>
       </View>
     </View>
@@ -88,6 +91,7 @@ function ProfileEditModal({ visible, onClose, profile, onSave, currentUserId }) 
   const [birthday, setBirthday] = useState('');
   const [bio, setBio] = useState('');
   const [privateTopics, setPrivateTopics] = useState('');
+  const [lovePreference, setLovePreference] = useState('all');
   const [saving, setSaving] = useState(false);
   const [avatarUri, setAvatarUri] = useState(null);     // 新規選択した画像URI（プレビュー用）
   const [currentAvatar, setCurrentAvatar] = useState(null); // 既存のURL
@@ -101,6 +105,7 @@ function ProfileEditModal({ visible, onClose, profile, onSave, currentUserId }) 
       setBirthday(profile.birthday || '');
       setBio(profile.bio || '');
       setPrivateTopics(profile.private_topics || '');
+      setLovePreference(profile.love_preference || 'all');
       setCurrentAvatar(profile.avatar_url || null);
       setAvatarUri(null);
     }
@@ -148,6 +153,7 @@ function ProfileEditModal({ visible, onClose, profile, onSave, currentUserId }) 
       birthday: birthday || null,
       bio: bio.trim(),
       privateTopics: privateTopics.trim(),
+      lovePreference: lovePreference || 'all',
       avatarUrl,
     });
     setSaving(false);
@@ -213,6 +219,28 @@ function ProfileEditModal({ visible, onClose, profile, onSave, currentUserId }) 
               ))}
             </View>
 
+            <Text style={s.editLabel}>{t('me_love_pref')}</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+              {[
+                { key: 'all', label: t('me_love_pref_all') },
+                { key: 'male', label: t('me_gender_male') },
+                { key: 'female', label: t('me_gender_female') },
+                { key: 'other', label: t('me_gender_other') },
+              ].map(opt => (
+                <TouchableOpacity
+                  key={opt.key}
+                  style={[
+                    { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5,
+                      borderColor: lovePreference === opt.key ? C.p : C.bm,
+                      backgroundColor: lovePreference === opt.key ? C.pp : 'transparent' },
+                  ]}
+                  onPress={() => setLovePreference(opt.key)}
+                >
+                  <Text style={{ fontSize: 12, color: lovePreference === opt.key ? C.p : C.t2 }}>{opt.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
             <Text style={s.editLabel}>{t('profile_age')}</Text>
             <TextInput style={s.editInput} value={age} onChangeText={setAge}
               placeholder={t('me_edit_age_placeholder')} placeholderTextColor={C.tm} keyboardType="numeric" maxLength={3} />
@@ -254,7 +282,7 @@ function ProfileEditModal({ visible, onClose, profile, onSave, currentUserId }) 
 }
 
 // Settings modal
-function SettingsModal({ visible, onClose, onEditProfile, onTerms }) {
+function SettingsModal({ visible, onClose, onEditProfile, onTerms, twinEnabled, onToggleTwin }) {
   const { colors: C, elementColors: ELEMENT_COLORS, isDark, toggleTheme } = useTheme();
   const { t, lang, switchLang } = useI18n();
   const s = getStyles(C);
@@ -290,18 +318,18 @@ function SettingsModal({ visible, onClose, onEditProfile, onTerms }) {
           <Text style={s.modalTitle}>{t('me_settings')}</Text>
 
           <TouchableOpacity style={s.menuItem} onPress={() => { onClose(); onEditProfile(); }}>
-            <View style={s.menuIcon}><Text style={{ fontSize: 16 }}>✎</Text></View>
+            <View style={s.menuIcon}><Ionicons name="create-outline" size={18} color={C.t2} /></View>
             <View><Text style={s.menuLabel}>{t('me_edit_profile')}</Text><Text style={s.menuSub}>{t('me_edit_profile_sub')}</Text></View>
           </TouchableOpacity>
 
           <TouchableOpacity style={s.menuItem}>
-            <View style={s.menuIcon}><Text style={{ fontSize: 16 }}>🔔</Text></View>
+            <View style={s.menuIcon}><Ionicons name="notifications-outline" size={18} color={C.t2} /></View>
             <View style={{ flex: 1 }}><Text style={s.menuLabel}>{t('me_notifications')}</Text></View>
             <Text style={s.menuSoon}>{t('me_coming_soon')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={s.menuItem} onPress={toggleTheme}>
-            <View style={s.menuIcon}><Text style={{ fontSize: 16 }}>{isDark ? '☀️' : '🌙'}</Text></View>
+            <View style={s.menuIcon}><Ionicons name={isDark ? 'sunny-outline' : 'moon-outline'} size={18} color={C.t2} /></View>
             <View style={{ flex: 1 }}><Text style={s.menuLabel}>{isDark ? t('me_light_mode') : t('me_dark_mode')}</Text></View>
             <View style={[s.toggleTrack, isDark && s.toggleTrackOn]}>
               <View style={[s.toggleThumb, isDark && s.toggleThumbOn]} />
@@ -313,31 +341,42 @@ function SettingsModal({ visible, onClose, onEditProfile, onTerms }) {
             const next = LANGUAGES[nextIdx % LANGUAGES.length];
             switchLang(next.code);
           }}>
-            <View style={s.menuIcon}><Text style={{ fontSize: 16 }}>🌐</Text></View>
+            <View style={s.menuIcon}><Ionicons name="globe-outline" size={18} color={C.t2} /></View>
             <View style={{ flex: 1 }}><Text style={s.menuLabel}>{t('me_language')} / Language</Text></View>
             <Text style={s.menuSoon}>{LANGUAGES.find(l => l.code === lang)?.label || lang}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={s.menuItem}>
-            <View style={s.menuIcon}><Text style={{ fontSize: 16 }}>🔒</Text></View>
+            <View style={s.menuIcon}><Ionicons name="lock-closed-outline" size={18} color={C.t2} /></View>
             <View style={{ flex: 1 }}><Text style={s.menuLabel}>{t('me_account_settings')}</Text></View>
             <Text style={s.menuSoon}>{t('me_coming_soon')}</Text>
           </TouchableOpacity>
 
+          <TouchableOpacity style={s.menuItem} onPress={onToggleTwin}>
+            <View style={s.menuIcon}><Ionicons name="person-circle-outline" size={18} color={C.t2} /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.menuLabel}>{t('me_twin_public')}</Text>
+              <Text style={s.menuSub}>{t('me_twin_public_sub')}</Text>
+            </View>
+            <View style={[s.toggleTrack, twinEnabled && s.toggleTrackOn]}>
+              <View style={[s.toggleThumb, twinEnabled && s.toggleThumbOn]} />
+            </View>
+          </TouchableOpacity>
+
           <TouchableOpacity style={s.menuItem} onPress={() => { onClose(); onTerms(); }}>
-            <View style={s.menuIcon}><Text style={{ fontSize: 16 }}>📄</Text></View>
+            <View style={s.menuIcon}><Ionicons name="document-text-outline" size={18} color={C.t2} /></View>
             <View><Text style={s.menuLabel}>{t('me_terms')}</Text></View>
           </TouchableOpacity>
 
           <View style={s.settingsDivider} />
 
           <TouchableOpacity style={s.menuItem} onPress={() => { onClose(); signOut(); }}>
-            <View style={s.menuIcon}><Text style={{ fontSize: 16 }}>🚪</Text></View>
+            <View style={s.menuIcon}><Ionicons name="log-out-outline" size={18} color={C.err || '#ef4444'} /></View>
             <Text style={[s.menuLabel, { color: C.err }]}>{t('me_logout')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={[s.menuItem, { opacity: deleting ? 0.5 : 1 }]} onPress={handleDeleteAccount} disabled={deleting}>
-            <View style={s.menuIcon}><Text style={{ fontSize: 16 }}>🗑️</Text></View>
+            <View style={s.menuIcon}><Ionicons name="trash-outline" size={18} color={C.t2} /></View>
             <Text style={[s.menuLabel, { color: C.tm, fontSize: 13 }]}>{deleting ? t('loading') : t('me_delete_account')}</Text>
           </TouchableOpacity>
         </View>
@@ -362,6 +401,9 @@ export default function MeScreen() {
   const [questions, setQuestions] = useState([]);
   const [answeringId, setAnsweringId] = useState(null);
   const [answerDraft, setAnswerDraft] = useState('');
+  const [twinEnabled, setTwinEnabled] = useState(true);
+  const [twinConversations, setTwinConversations] = useState([]);
+  const [showTwinLog, setShowTwinLog] = useState(false);
 
   useEffect(() => { loadData(); }, []);
 
@@ -374,15 +416,18 @@ export default function MeScreen() {
 
       const p = await loadProfile(user.id);
       setProfile(p || { display_name: user.email?.split('@')[0] || t('me_default_user') });
+      setTwinEnabled(p?.twin_enabled !== false); // デフォルトtrue（nullやundefinedはtrue扱い）
 
-      const [count, persona, qs] = await Promise.all([
+      const [count, persona, qs, twinLogs] = await Promise.all([
         getConversationCount(user.id),
         loadPersona(user.id),
         getMyQuestions(user.id),
+        getMyTwinConversations(user.id),
       ]);
       setConvCount(count);
       if (persona) setPersonaData(persona);
       setQuestions(qs);
+      setTwinConversations(twinLogs);
     } catch (e) {
       console.log('loadData error:', e);
     } finally {
@@ -403,10 +448,20 @@ export default function MeScreen() {
         age: fields.age,
         birthday: fields.birthday,
         private_topics: fields.privateTopics,
+        love_preference: fields.lovePreference,
         avatar_url: fields.avatarUrl || prev?.avatar_url,
       }));
     }
     return ok;
+  }
+
+  async function handleToggleTwin() {
+    if (!currentUserId) return;
+    const next = !twinEnabled;
+    setTwinEnabled(next);
+    await supabase
+      .from('profiles')
+      .upsert({ id: currentUserId, twin_enabled: next, updated_at: new Date().toISOString() }, { onConflict: 'id' });
   }
 
   const userName = profile?.display_name || t('me_default_user');
@@ -424,6 +479,8 @@ export default function MeScreen() {
         onClose={() => setShowSettings(false)}
         onEditProfile={() => setTimeout(() => setShowEditProfile(true), 300)}
         onTerms={() => navigation.navigate('Terms')}
+        twinEnabled={twinEnabled}
+        onToggleTwin={handleToggleTwin}
       />
       <ProfileEditModal
         visible={showEditProfile}
@@ -460,7 +517,7 @@ export default function MeScreen() {
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <TouchableOpacity style={s.headerIcon} onPress={() => setShowSettings(true)}>
-              <Text style={{ fontSize: 15 }}>⚙️</Text>
+              <Ionicons name="settings-outline" size={18} color={C.t2} />
             </TouchableOpacity>
           </View>
         </View>
@@ -531,7 +588,7 @@ export default function MeScreen() {
         {personaData ? (
           <RadarChart scores={personaData} />
         ) : (
-          <LockedCard icon="🔮" label={t('me_radar')} hint={t('me_locked_10')} />
+          <LockedCard icon="analytics-outline" label={t('me_radar')} hint={t('me_locked_10')} />
         )}
 
         {/* Trait Scores */}
@@ -549,7 +606,7 @@ export default function MeScreen() {
             ))}
           </View>
         ) : (
-          <LockedCard icon="📊" label={t('me_traits')} hint={t('me_locked_10')} />
+          <LockedCard icon="bar-chart-outline" label={t('me_traits')} hint={t('me_locked_10')} />
         )}
 
         <Divider />
@@ -579,7 +636,7 @@ export default function MeScreen() {
             <Text style={s.compatText}>{personaData.compatibility_text}</Text>
           </View>
         ) : (
-          <LockedCard icon="🤝" label={t('me_compatibility')} hint={t('me_locked_30')} />
+          <LockedCard icon="people-outline" label={t('me_compatibility')} hint={t('me_locked_30')} />
         )}
 
         {/* Value Priorities */}
@@ -602,7 +659,7 @@ export default function MeScreen() {
             <Text style={s.analysisSub}>{personaData.values_profile.worldview}</Text>
           </View>
         ) : (
-          <LockedCard icon="⚖️" label={t('me_values')} hint={t('me_locked_30')} />
+          <LockedCard icon="bar-chart-outline" label={t('me_values')} hint={t('me_locked_30')} />
         )}
 
         {/* Attachment Style */}
@@ -614,7 +671,7 @@ export default function MeScreen() {
             tags={personaData.attachment_style.tags || []}
           />
         ) : (
-          <LockedCard icon="💕" label={t('me_attachment')} hint={t('me_locked_30')} />
+          <LockedCard icon="heart-outline" label={t('me_attachment')} hint={t('me_locked_30')} />
         )}
 
         {/* Stress Response */}
@@ -626,7 +683,7 @@ export default function MeScreen() {
             tags={personaData.stress_response.tags || []}
           />
         ) : (
-          <LockedCard icon="⚡" label={t('me_stress')} hint={t('me_locked_30')} />
+          <LockedCard icon="flash-outline" label={t('me_stress')} hint={t('me_locked_30')} />
         )}
 
         {/* Energy Source */}
@@ -639,7 +696,7 @@ export default function MeScreen() {
             <Text style={s.analysisSub}>{personaData.energy_source.drain || ''}</Text>
           </View>
         ) : (
-          <LockedCard icon="🔋" label={t('me_energy')} hint={t('me_locked_30')} />
+          <LockedCard icon="battery-charging-outline" label={t('me_energy')} hint={t('me_locked_30')} />
         )}
 
         {/* Thinking Style */}
@@ -651,7 +708,7 @@ export default function MeScreen() {
             tags={personaData.thinking_style.tags || []}
           />
         ) : (
-          <LockedCard icon="🧠" label={t('me_thinking')} hint={t('me_locked_30')} />
+          <LockedCard icon="bulb-outline" label={t('me_thinking')} hint={t('me_locked_30')} />
         )}
 
         <Divider />
@@ -666,72 +723,216 @@ export default function MeScreen() {
             <Text style={s.analysisSub}>{personaData.style_profile.sentence_length}</Text>
           </View>
         ) : (
-          <LockedCard icon="✍️" label={t('me_style')} hint={t('me_locked_10')} />
+          <LockedCard icon="pencil-outline" label={t('me_style')} hint={t('me_locked_10')} />
         )}
 
-        {/* Questions for You - 常に表示 */}
+        {/* Questions for You */}
         <Divider />
-        <SLabel text={t('me_qa')} sub={questions.filter(q => !q.answer_text).length > 0 ? t('me_qa_pending', { count: questions.filter(q => !q.answer_text).length }) : null} />
+        <SLabel
+          text={t('me_qa')}
+          sub={questions.filter(q => q.status !== 'answered').length > 0
+            ? t('me_qa_pending', { count: questions.filter(q => q.status !== 'answered').length })
+            : null}
+        />
+        {/* サブタイトル */}
+        <Text style={{ fontSize: 11, color: C.tm, marginHorizontal: 24, marginBottom: 12, marginTop: -4 }}>
+          {t('me_qa_subtitle')}
+        </Text>
         {questions.length === 0 ? (
           <View style={s.qaEmptyCard}>
-            <Text style={{ fontSize: 28, marginBottom: 10 }}>💬</Text>
+            <Ionicons name="chatbubbles-outline" size={32} color={C.t3} style={{ marginBottom: 10 }} />
             <Text style={s.qaEmptyTitle}>{t('me_qa_empty_title')}</Text>
             <Text style={s.qaEmptyHint}>{t('me_qa_empty_hint')}</Text>
           </View>
         ) : (
           <>
-            {questions.map((q) => (
-              <View key={q.id} style={s.qaCard}>
-                <Text style={s.qaQ}>Q. {q.question_text}</Text>
-                {q.source_count > 1 ? (
-                  <Text style={s.qaCount}>{t('me_qa_asked_by', { count: q.source_count })}</Text>
-                ) : null}
-                {q.status === 'answered' ? (
-                  <View style={s.qaAnswered}>
-                    <Text style={s.qaA}>{q.answer_text}</Text>
-                  </View>
-                ) : answeringId === q.id ? (
-                  <View style={{ marginTop: 8 }}>
-                    <TextInput
-                      style={s.qaInput}
-                      value={answerDraft}
-                      onChangeText={setAnswerDraft}
-                      placeholder={t('me_qa_answer_placeholder')}
-                      placeholderTextColor={C.tm}
-                      multiline
-                      maxLength={300}
-                    />
-                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 6 }}>
-                      <TouchableOpacity style={s.qaCancelBtn} onPress={() => { setAnsweringId(null); setAnswerDraft(''); }}>
-                        <Text style={s.qaCancelTxt}>{t('cancel')}</Text>
-                      </TouchableOpacity>
+            {questions.map((q) => {
+              const isExpanded = answeringId === q.id;
+              const isAnswered = q.status === 'answered';
+              return (
+                <TouchableOpacity
+                  key={q.id}
+                  style={s.qaCard}
+                  onPress={() => {
+                    if (isAnswered) return;
+                    if (isExpanded) { setAnsweringId(null); setAnswerDraft(''); }
+                    else { setAnsweringId(q.id); setAnswerDraft(''); }
+                  }}
+                  activeOpacity={isAnswered ? 1 : 0.7}
+                >
+                  {/* まとめヘッダー */}
+                  {q.source_count > 1 ? (
+                    <View style={s.qaSumHeader}>
+                      <Text style={s.qaSumCount}>{q.source_count}件</Text>
+                      <Ionicons name="arrow-forward" size={12} color={C.p} />
+                      <Text style={s.qaSumLabel}>まとめました</Text>
+                    </View>
+                  ) : null}
+
+                  {/* 質問本文 */}
+                  <Text style={s.qaQ}>「{q.question_text}」</Text>
+
+                  {/* 類似質問ヒント */}
+                  {q.source_count > 1 ? (
+                    <Text style={s.qaSimHint} numberOfLines={1}>
+                      類似：同じテーマの質問を {q.source_count - 1}件受けています
+                    </Text>
+                  ) : null}
+
+                  {/* 回答済み表示 */}
+                  {isAnswered ? (
+                    <View style={s.qaAnswered}>
+                      <Text style={{ fontSize: 10, color: C.tm, marginBottom: 4 }}>あなたの回答</Text>
+                      <Text style={s.qaA}>{q.answer_text}</Text>
+                    </View>
+                  ) : isExpanded ? (
+                    /* 回答入力ボックス */
+                    <View style={{ marginTop: 12 }} onStartShouldSetResponder={() => true}>
+                      <Text style={{ fontSize: 11, color: C.tm, marginBottom: 8 }}>あなたの回答</Text>
+                      <TextInput
+                        style={s.qaInput}
+                        value={answerDraft}
+                        onChangeText={setAnswerDraft}
+                        placeholder={t('me_qa_answer_placeholder')}
+                        placeholderTextColor={C.tm}
+                        multiline
+                        maxLength={300}
+                        autoFocus
+                      />
                       <TouchableOpacity
-                        style={[s.qaSubmitBtn, !answerDraft.trim() && { opacity: 0.5 }]}
+                        style={[s.qaSubmitBtn, !answerDraft.trim() && { opacity: 0.4 }]}
                         disabled={!answerDraft.trim()}
                         onPress={async () => {
                           const ok = await answerQuestion(q.id, answerDraft.trim());
                           if (ok) {
-                            setQuestions(prev => prev.map(p => p.id === q.id ? { ...p, answer_text: answerDraft.trim(), status: 'answered' } : p));
+                            setQuestions(prev => prev.map(p => p.id === q.id
+                              ? { ...p, answer_text: answerDraft.trim(), status: 'answered' }
+                              : p));
                             setAnsweringId(null);
                             setAnswerDraft('');
                           }
                         }}
                       >
-                        <Text style={s.qaSubmitTxt}>{t('me_qa_submit')}</Text>
+                        <Text style={s.qaSubmitTxt}>{t('me_qa_submit_full')}</Text>
                       </TouchableOpacity>
                     </View>
-                  </View>
-                ) : (
-                  <TouchableOpacity style={s.qaAnswerBtn} onPress={() => { setAnsweringId(q.id); setAnswerDraft(''); }}>
-                    <Text style={s.qaAnswerBtnTxt}>{t('me_qa_submit')}</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            ))}
+                  ) : (
+                    /* タップヒント */
+                    <View style={s.qaTapHint}>
+                      <Text style={s.qaTapHintTxt}>タップして回答する</Text>
+                      <Ionicons name="arrow-forward" size={12} color={C.p} />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </>
         )}
 
         <Divider />
+
+        {/* Growth Record */}
+        {personaData && convCount >= 10 ? (
+          <>
+            <SLabel text="成長の記録" />
+            {/* 会話数に応じた成長メッセージ */}
+            <View style={{ marginHorizontal: 24, marginBottom: 8 }}>
+              <View style={{ backgroundColor: C.card, borderRadius: 16, padding: 16, marginBottom: 10, borderWidth: 1, borderColor: C.bd }}>
+                <Text style={{ fontSize: 12, color: C.t3, marginBottom: 4 }}>
+                  {convCount}回の会話で見えてきたあなた
+                </Text>
+                <Text style={{ fontSize: 14, color: C.t1, fontWeight: '600', lineHeight: 22 }}>
+                  {getGrowthMessage(personaData, convCount)}
+                </Text>
+              </View>
+
+              {/* 5軸スコアのビジュアルサークル */}
+              <Text style={{ fontSize: 11, color: C.t3, marginBottom: 10 }}>現在のプロフィール</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                {[
+                  { key: 'depth', label: '内省', icon: 'bulb-outline' },
+                  { key: 'will', label: '意志', icon: 'shield-outline' },
+                  { key: 'action', label: '行動', icon: 'flash-outline' },
+                  { key: 'resonance', label: '共感', icon: 'heart-outline' },
+                  { key: 'stability', label: '安定', icon: 'water-outline' },
+                ].map(ax => {
+                  const val = personaData[ax.key] || 0;
+                  const color = val >= 70 ? C.p : val >= 50 ? C.pl : C.t3;
+                  return (
+                    <View key={ax.key} style={{ alignItems: 'center', flex: 1 }}>
+                      <View style={{
+                        width: 48, height: 48, borderRadius: 24,
+                        backgroundColor: C.pp, borderWidth: 2, borderColor: color,
+                        alignItems: 'center', justifyContent: 'center', marginBottom: 6,
+                      }}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color }}>{val}</Text>
+                      </View>
+                      <Text style={{ fontSize: 10, color: C.t3 }}>{ax.label}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* 今日の洞察カード */}
+            <View style={{ marginHorizontal: 24, backgroundColor: C.pp, borderRadius: 16, padding: 16, marginBottom: 10, borderWidth: 1, borderColor: C.pm }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <Ionicons name="sparkles" size={14} color={C.p} />
+                <Text style={{ fontSize: 11, color: C.p, fontWeight: '600' }}>今日のあなたへの洞察</Text>
+              </View>
+              <Text style={{ fontSize: 13, color: C.t1, lineHeight: 20 }}>
+                {getDailyInsight(personaData)}
+              </Text>
+            </View>
+          </>
+        ) : null}
+
+        <Divider />
+
+        {/* 分身への質問ログ */}
+        {personaData ? (
+          <>
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, marginBottom: 10, gap: 6 }}
+              onPress={() => setShowTwinLog(v => !v)}
+            >
+              <Ionicons name="person-circle-outline" size={16} color={C.p} />
+              <Text style={{ fontSize: 13, fontWeight: '600', color: C.t1, flex: 1 }}>{t('me_twin_log_title')}</Text>
+              {twinConversations.length > 0 && (
+                <View style={{ backgroundColor: C.p, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2 }}>
+                  <Text style={{ fontSize: 10, color: C.white, fontWeight: '700' }}>{twinConversations.length}</Text>
+                </View>
+              )}
+              <Ionicons name={showTwinLog ? 'chevron-up' : 'chevron-down'} size={14} color={C.t3} />
+            </TouchableOpacity>
+
+            {showTwinLog && (
+              <View style={{ marginHorizontal: 24, marginBottom: 16 }}>
+                {twinConversations.length === 0 ? (
+                  <View style={{ backgroundColor: C.card, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: C.bd, alignItems: 'center' }}>
+                    <Text style={{ fontSize: 12, color: C.tm }}>{t('me_twin_log_empty')}</Text>
+                  </View>
+                ) : twinConversations.map((conv, i) => (
+                  <View key={conv.id || i} style={{ backgroundColor: C.card, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: C.bd, marginBottom: 8 }}>
+                    <Text style={{ fontSize: 10, color: C.tm, marginBottom: 6 }}>
+                      {new Date(conv.created_at).toLocaleDateString()}
+                    </Text>
+                    <Text style={{ fontSize: 12, color: C.t2, marginBottom: 6 }}>
+                      Q: {conv.question}
+                    </Text>
+                    <Text style={{ fontSize: 12, color: C.t1, lineHeight: 18 }}>
+                      A: {conv.answer}
+                    </Text>
+                  </View>
+                ))}
+                <Text style={{ fontSize: 10, color: C.tm, textAlign: 'center', marginTop: 4 }}>
+                  {t('me_twin_log_disclaimer')}
+                </Text>
+              </View>
+            )}
+            <Divider />
+          </>
+        ) : null}
 
         {/* Share / Preview */}
         <View style={{ paddingHorizontal: 24, marginBottom: 12, gap: 8 }}>
@@ -752,6 +953,33 @@ export default function MeScreen() {
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+function getGrowthMessage(persona, count) {
+  if (!persona) return '';
+  const dominant = ['depth', 'will', 'action', 'resonance', 'stability']
+    .reduce((a, b) => (persona[a] || 0) > (persona[b] || 0) ? a : b);
+  const msgs = {
+    depth: `深く考える力が際立っています。${count}回の対話で、あなたの内省的な側面が明確になってきました。`,
+    will: `やり抜く意志の強さが見えてきました。${count}回の会話を通じて、一貫した価値観が浮かび上がっています。`,
+    action: `行動力と積極性が光っています。${count}回の対話から、外に向かうエネルギーの強さが分かります。`,
+    resonance: `人との繋がりを大切にする共感力が特徴です。${count}回の会話で、その深さが見えてきました。`,
+    stability: `揺るぎない安定感が土台にあります。${count}回の対話を通じて、感情の軸がはっきりしてきました。`,
+  };
+  return msgs[dominant] || `${count}回の会話から、あなたの独自のパターンが見えてきました。`;
+}
+
+function getDailyInsight(persona) {
+  if (!persona) return '';
+  const insights = [
+    persona.depth > 60 ? 'あなたは表面より本質を重視する傾向があります。今日、その視点を誰かに伝えてみては。' : null,
+    persona.action < 40 ? '内向きのエネルギーを持つあなたにとって、一人で深く考える時間が充電になります。' : null,
+    persona.resonance > 65 ? '共感力が高いあなたは、今日誰かの話を深く聞くことで新しい気づきを得られるかもしれません。' : null,
+    persona.will > 65 ? '意志の強さがあなたの強みです。今日はその力を、自分が本当にやりたいことに向けてみましょう。' : null,
+    '今日も自分らしく。AIはあなたのことをもっと知りたいと思っています。',
+  ].filter(Boolean);
+  const idx = new Date().getDate() % insights.length;
+  return insights[idx];
 }
 
 function getStyles(C) {
@@ -801,21 +1029,22 @@ function getStyles(C) {
     lockedHint: { fontSize: 10, color: C.tm, marginTop: 1 },
     lockIcon: { opacity: 0.6 },
     // Q&A
-    qaEmptyCard: { marginHorizontal: 24, marginBottom: 12, alignItems: 'center', padding: 24, backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.bd },
+    qaEmptyCard: { marginHorizontal: 24, marginBottom: 12, alignItems: 'center', padding: 28, backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.bd },
     qaEmptyTitle: { fontSize: 13, fontWeight: '600', color: C.t2, marginBottom: 6 },
     qaEmptyHint: { fontSize: 12, color: C.tm, textAlign: 'center', lineHeight: 18 },
-    qaCard: { marginHorizontal: 24, marginBottom: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.bd, borderRadius: 14, padding: 12 },
-    qaQ: { fontSize: 12, fontWeight: '500', color: C.p },
-    qaCount: { fontSize: 10, color: C.tm, marginTop: 4 },
-    qaAnswered: { marginTop: 8, backgroundColor: C.bs, borderRadius: 10, padding: 10 },
-    qaA: { fontSize: 12, color: C.t1, lineHeight: 18 },
-    qaInput: { backgroundColor: C.inputBg, borderWidth: 1, borderColor: C.bm, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 12, color: C.t1, height: 70, textAlignVertical: 'top' },
-    qaCancelBtn: { flex: 1, padding: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.bm, borderRadius: 10, alignItems: 'center' },
-    qaCancelTxt: { fontSize: 11, color: C.tm },
-    qaSubmitBtn: { flex: 1, padding: 8, backgroundColor: C.p, borderRadius: 10, alignItems: 'center' },
-    qaSubmitTxt: { fontSize: 11, color: C.white, fontWeight: '500' },
-    qaAnswerBtn: { marginTop: 8, padding: 8, backgroundColor: C.pp, borderWidth: 1, borderColor: C.bm, borderRadius: 10, alignItems: 'center' },
-    qaAnswerBtnTxt: { fontSize: 11, color: C.p },
+    qaCard: { marginHorizontal: 24, marginBottom: 10, backgroundColor: C.card, borderWidth: 1, borderColor: C.bd, borderRadius: 16, padding: 16, overflow: 'hidden' },
+    qaSumHeader: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 8 },
+    qaSumCount: { fontSize: 11, fontWeight: '700', color: C.p },
+    qaSumLabel: { fontSize: 11, color: C.t3 },
+    qaQ: { fontSize: 14, fontWeight: '600', color: C.t1, lineHeight: 20, marginBottom: 6 },
+    qaSimHint: { fontSize: 11, color: C.tm, marginBottom: 4 },
+    qaTapHint: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 },
+    qaTapHintTxt: { fontSize: 12, color: C.p },
+    qaAnswered: { marginTop: 12, backgroundColor: C.pp, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: C.pm },
+    qaA: { fontSize: 13, color: C.t1, lineHeight: 20 },
+    qaInput: { backgroundColor: C.inputBg, borderWidth: 1, borderColor: C.pm, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, fontSize: 13, color: C.t1, minHeight: 80, textAlignVertical: 'top', marginBottom: 10 },
+    qaSubmitBtn: { padding: 14, backgroundColor: C.p, borderRadius: 12, alignItems: 'center' },
+    qaSubmitTxt: { fontSize: 13, color: '#fff', fontWeight: '600' },
     // Compatibility card
     compatCard: { marginHorizontal: 24, marginBottom: 12, borderRadius: 16, padding: 14, backgroundColor: C.pp, borderWidth: 1, borderColor: C.pm },
     compatText: { fontSize: 12, color: C.t1, lineHeight: 20 },

@@ -51,6 +51,19 @@ export default async function handler(req, res) {
   }
 
   try {
+    // ツイン公開設定チェック（自分以外にアクセスされる場合のみ）
+    if (user.id !== targetUserId) {
+      const { data: targetProfile } = await supabase
+        .from('profiles')
+        .select('twin_enabled')
+        .eq('id', targetUserId)
+        .maybeSingle();
+
+      if (targetProfile?.twin_enabled === false) {
+        return res.status(403).json({ error: 'この人のデジタル分身は現在非公開です' });
+      }
+    }
+
     // ターゲットユーザーの人格データを取得
     const { data: persona } = await supabase
       .from('persona_data')
@@ -162,6 +175,21 @@ ${summaryText}
       text = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'もう一度試してください';
       text = text.replace(/\*\*/g, '').replace(/\*/g, '').replace(/#{1,6}\s/g, '').trim();
       break;
+    }
+
+    // 会話ログを保存（本人が閲覧できるように）
+    if (text && user.id !== targetUserId) {
+      const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+      if (lastUserMsg?.content) {
+        supabase.from('twin_conversations').insert({
+          target_user_id: targetUserId,
+          asker_user_id: user.id,
+          question: lastUserMsg.content.slice(0, 500),
+          answer: text.slice(0, 1000),
+        }).then(({ error }) => {
+          if (error) console.error('twin_conversations insert error:', error.message);
+        });
+      }
     }
 
     res.status(200).json({ content: [{ text }] });

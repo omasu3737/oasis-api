@@ -157,6 +157,7 @@ export default function ResonanceScreen() {
   const [searched, setSearched] = useState(false);
   const [myPersonaData, setMyPersonaData] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [genderFilter, setGenderFilter] = useState('all'); // 'all' | 'male' | 'female' | 'other'
 
   const FILTERS = [
     { key: 'all', label: t('resonance_filter_all') },
@@ -200,8 +201,14 @@ export default function ResonanceScreen() {
 
       const [{ data: userData }, { data: profiles }] = await Promise.all([
         supabase.from('users').select('id, name').in('id', userIds),
-        supabase.from('profiles').select('id, display_name').in('id', userIds),
+        supabase.from('profiles').select('id, display_name, gender, love_preference').in('id', userIds),
       ]);
+
+      const { data: myProfile } = await supabase
+        .from('profiles')
+        .select('gender, love_preference')
+        .eq('id', currentUser.id)
+        .single();
 
       if (!userData) { setUsers([]); setLoading(false); return; }
 
@@ -244,6 +251,21 @@ export default function ResonanceScreen() {
             .filter(([k]) => k !== filterKey)
             .map(([, v]) => v);
           return otherScores.every(other => catScore >= other - 5);
+        });
+      }
+
+      // Romanceフィルター時：性別・恋愛対象でフィルタリング
+      if (filterKey === 'romance' && myProfile) {
+        const myGender = myProfile.gender || 'unset';
+        const myPref = myProfile.love_preference || 'all';
+        result = result.filter(r => {
+          const theirGender = r.profile?.gender || 'unset';
+          const theirPref = r.profile?.love_preference || 'all';
+          // 自分の恋愛対象と相手の性別が一致
+          const iWantThem = myPref === 'all' || myPref === theirGender;
+          // 相手の恋愛対象と自分の性別が一致
+          const theyWantMe = theirPref === 'all' || theirPref === myGender;
+          return iWantThem && theyWantMe;
         });
       }
 

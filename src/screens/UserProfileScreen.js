@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -18,6 +19,23 @@ import { reportUser, blockUser } from '../services/report';
 import { ELEMENT_COLORS } from '../theme';
 import { supabase } from '../supabase';
 
+function calcResonanceDetail(a, b) {
+  if (!a || !b) return null;
+  const axes = [
+    { key: 'depth', labelKey: 'trait_depth' },
+    { key: 'will', labelKey: 'trait_will' },
+    { key: 'action', labelKey: 'trait_action' },
+    { key: 'resonance', labelKey: 'trait_resonance' },
+    { key: 'stability', labelKey: 'trait_stability' },
+  ];
+  const scores = axes.map(ax => ({
+    ...ax,
+    score: Math.round(100 - Math.abs((a[ax.key] || 50) - (b[ax.key] || 50))),
+  }));
+  const overall = Math.round(scores.reduce((s, v) => s + v.score, 0) / scores.length);
+  return { overall, axes: scores };
+}
+
 export default function UserProfileScreen() {
   const { colors: C, elementColors } = useTheme();
   const { t } = useI18n();
@@ -36,6 +54,7 @@ export default function UserProfileScreen() {
 
   const [profile, setProfile] = useState(null);
   const [persona, setPersona] = useState(null);
+  const [myPersona, setMyPersona] = useState(null);
   const [friendship, setFriendship] = useState({ status: 'none' });
   const [answeredQs, setAnsweredQs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -67,6 +86,16 @@ export default function UserProfileScreen() {
         .eq('user_id', userId)
         .single();
       if (pd) setPersona(pd);
+
+      // 自分のpersona_dataを読み込む
+      if (me) {
+        const { data: myPd } = await supabase
+          .from('persona_data')
+          .select('depth, will, action, resonance, stability, element_type, persona_type')
+          .eq('user_id', me.id)
+          .single();
+        if (myPd) setMyPersona(myPd);
+      }
     } catch (e) {
       console.log('UserProfile loadData error:', e);
     } finally {
@@ -113,11 +142,11 @@ export default function UserProfileScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
       <View style={s.nav}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={s.back}>‹</Text>
+          <Ionicons name="chevron-back" size={28} color={C.t1} />
         </TouchableOpacity>
         <Text style={[s.navTitle, { flex: 1 }]}>{displayName}</Text>
         <TouchableOpacity style={s.moreBtn} onPress={() => setShowMoreMenu(true)}>
-          <Text style={s.moreDots}>···</Text>
+          <Ionicons name="ellipsis-vertical" size={22} color={C.t1} />
         </TouchableOpacity>
       </View>
 
@@ -139,12 +168,50 @@ export default function UserProfileScreen() {
           </View>
         </View>
 
-        {persona?.compatibility_text ? (
-          <View style={s.resonanceCard}>
-            <Text style={s.resonanceTitle}>✦ {t('user_resonance')}</Text>
-            <Text style={s.resonanceText}>{persona.compatibility_text}</Text>
-          </View>
-        ) : null}
+        {/* 強化された共鳴カード */}
+        {persona && myPersona && (() => {
+          const res = calcResonanceDetail(myPersona, persona);
+          if (!res) return null;
+          return (
+            <View style={s.resonanceCard}>
+              {/* ヘッダー：共鳴度 */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                <Ionicons name="sparkles" size={16} color={'#e040fb'} />
+                <Text style={s.resonanceTitle}>{t('user_resonance')}</Text>
+                <View style={{ flex: 1 }} />
+                <Text style={{ color: '#e040fb', fontWeight: '700', fontSize: 18 }}>{res.overall}%</Text>
+              </View>
+
+              {/* AI生成の共鳴テキスト */}
+              {persona.compatibility_text ? (
+                <Text style={[s.resonanceText, { marginBottom: 14 }]}>{persona.compatibility_text}</Text>
+              ) : null}
+
+              {/* 5軸ごとの共鳴バー */}
+              <Text style={{ color: C.t3, fontSize: 11, marginBottom: 8, letterSpacing: 0.5 }}>
+                {t('user_resonance_detail')}
+              </Text>
+              {res.axes.map(ax => (
+                <View key={ax.key} style={{ marginBottom: 8 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 }}>
+                    <Text style={{ color: C.t2, fontSize: 12 }}>{t(ax.labelKey)}</Text>
+                    <Text style={{ color: ax.score >= 80 ? '#e040fb' : ax.score >= 60 ? C.p : C.t3, fontSize: 12, fontWeight: '600' }}>
+                      {ax.score}%
+                    </Text>
+                  </View>
+                  <View style={{ height: 4, backgroundColor: C.bm, borderRadius: 2 }}>
+                    <View style={{
+                      height: 4,
+                      width: `${ax.score}%`,
+                      backgroundColor: ax.score >= 80 ? '#e040fb' : ax.score >= 60 ? C.p : C.t3,
+                      borderRadius: 2,
+                    }} />
+                  </View>
+                </View>
+              ))}
+            </View>
+          );
+        })()}
 
         <TouchableOpacity
           style={s.askBtn}
@@ -305,7 +372,7 @@ export default function UserProfileScreen() {
                 );
               }}
             >
-              <Text style={{ fontSize: 16 }}>🚫</Text>
+              <Ionicons name="close-circle-outline" size={18} color={C.red || '#ef4444'} />
               <Text style={s.moreItemTxt}>{t('user_block_action')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -345,7 +412,7 @@ export default function UserProfileScreen() {
                 );
               }}
             >
-              <Text style={{ fontSize: 16 }}>⚠️</Text>
+              <Ionicons name="alert-circle-outline" size={18} color={C.t2} />
               <Text style={[s.moreItemTxt, { color: C.err }]}>{t('user_report_action')}</Text>
             </TouchableOpacity>
           </View>
@@ -365,7 +432,7 @@ const getStyles = (C) => StyleSheet.create({
   name: { fontSize: 20, fontWeight: '500', color: C.t1, marginBottom: 2 },
   typeName: { fontSize: 12, color: C.p },
   resonanceCard: { marginHorizontal: 24, marginBottom: 14, borderRadius: 16, padding: 14, backgroundColor: C.pp, borderWidth: 1, borderColor: C.pm },
-  resonanceTitle: { fontSize: 10, color: C.p, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 },
+  resonanceTitle: { fontSize: 10, color: C.p, textTransform: 'uppercase', letterSpacing: 1 },
   resonanceText: { fontSize: 12, color: C.t1, lineHeight: 20 },
   askBtn: { marginHorizontal: 24, marginBottom: 10, padding: 14, backgroundColor: C.p, borderRadius: 16, alignItems: 'center' },
   askBtnTxt: { fontSize: 14, fontWeight: '500', color: C.white },

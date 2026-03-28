@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useMemo, useRef, useState } from 'react';
 import {
@@ -52,8 +53,13 @@ export default function AskAIScreen() {
       });
 
       const data = await response.json();
-      const aiText = data?.content?.[0]?.text || t('ask_retry');
-      setMessages(prev => [...prev, { role: 'assistant', content: aiText }]);
+      if (response.status === 403) {
+        const errMsg = data?.error || t('ask_retry');
+        setMessages(prev => [...prev, { role: 'assistant', content: errMsg }]);
+      } else {
+        const aiText = data?.content?.[0]?.text || t('ask_retry');
+        setMessages(prev => [...prev, { role: 'assistant', content: aiText }]);
+      }
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: t('ask_network_error') }]);
     } finally {
@@ -79,7 +85,7 @@ export default function AskAIScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
       <View style={s.nav}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={s.back}>‹</Text>
+          <Ionicons name="chevron-back" size={26} color={C.p} />
         </TouchableOpacity>
         <UserIcon name={userName} size={30} />
         <View style={{ flex: 1 }}>
@@ -158,7 +164,7 @@ export default function AskAIScreen() {
             onPress={handleSend}
             disabled={!input.trim() || sending}
           >
-            <Text style={s.sendTxt}>↑</Text>
+            <Ionicons name="arrow-up" size={18} color={C.white} />
           </TouchableOpacity>
         </View>
         <Text style={s.disclaimer}>
@@ -175,7 +181,6 @@ const getStyles = (C) => StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 8,
     borderBottomWidth: 1, borderBottomColor: C.bd,
   },
-  back: { fontSize: 28, color: C.p, paddingRight: 4 },
   navName: { fontSize: 14, fontWeight: '500', color: C.t1 },
   navType: { fontSize: 10, color: C.p, marginTop: 1 },
   elBadge: {
@@ -216,7 +221,6 @@ const getStyles = (C) => StyleSheet.create({
     width: 36, height: 36, borderRadius: 18,
     backgroundColor: C.p, alignItems: 'center', justifyContent: 'center',
   },
-  sendTxt: { fontSize: 18, color: C.white, fontWeight: '600' },
   disclaimer: {
     fontSize: 9, color: C.tm, textAlign: 'center',
     paddingBottom: 8, paddingTop: 2,

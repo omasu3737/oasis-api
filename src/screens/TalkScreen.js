@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -117,7 +118,7 @@ export default function TalkScreen() {
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {pendingRequests.length > 0 ? (
             <TouchableOpacity style={s.notifBtn} onPress={() => setShowRequests(true)}>
-              <Text style={{ fontSize: 13 }}>🔔</Text>
+              <Ionicons name="notifications-outline" size={22} color={C.t1} />
               <View style={s.notifDot}>
                 <Text style={{ fontSize: 8, color: C.white }}>{pendingRequests.length}</Text>
               </View>
@@ -140,7 +141,7 @@ export default function TalkScreen() {
         {/* AIチャットカード */}
         <TouchableOpacity style={s.aiCard} onPress={() => navigation.navigate('AIChat')}>
           <View style={s.aiOrb}>
-            <Text style={{ fontSize: 22, color: C.t1 }}>✦</Text>
+            <Ionicons name="sparkles" size={22} color={C.t1} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={s.aiName}>{t('talk_ai_name')}</Text>
@@ -182,7 +183,7 @@ export default function TalkScreen() {
           })
         ) : (
           <View style={s.emptyArea}>
-            <Text style={{ fontSize: 28, marginBottom: 8 }}>👥</Text>
+            <Ionicons name="people-outline" size={48} color={C.t3} style={{ marginBottom: 8 }} />
             <Text style={s.emptyTitle}>{t('talk_no_friends')}</Text>
             <Text style={s.emptySub}>{t('talk_no_friends_sub')}</Text>
           </View>
@@ -197,11 +198,11 @@ export default function TalkScreen() {
             <View style={s.mhandle} />
             <Text style={s.modalTitle}>{t('talk_menu')}</Text>
             <TouchableOpacity style={s.modalItem} onPress={() => { setShowMenu(false); setTimeout(() => setShowAddFriend(true), 300); }}>
-              <View style={s.modalIcon}><Text style={{ fontSize: 16 }}>👤</Text></View>
+              <View style={s.modalIcon}><Ionicons name="person-add-outline" size={18} color={C.t2} /></View>
               <View><Text style={s.modalLabel}>{t('talk_add_friend')}</Text><Text style={s.modalSub}>{t('talk_add_friend_sub')}</Text></View>
             </TouchableOpacity>
             <TouchableOpacity style={s.modalItem} onPress={() => { setShowMenu(false); /* TODO: group */ }}>
-              <View style={s.modalIcon}><Text style={{ fontSize: 16 }}>👥</Text></View>
+              <View style={s.modalIcon}><Ionicons name="people-outline" size={18} color={C.t2} /></View>
               <View><Text style={s.modalLabel}>{t('talk_create_group')}</Text><Text style={s.modalSub}>{t('talk_create_group_sub')}</Text></View>
             </TouchableOpacity>
           </View>

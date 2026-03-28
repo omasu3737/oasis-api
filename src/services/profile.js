@@ -80,6 +80,7 @@ export async function saveProfile(userId, fields) {
     birthday: fields.birthday || null,
     comment: fields.comment,
     private_topics: fields.privateTopics,
+    love_preference: fields.lovePreference || 'all',
     updated_at: new Date().toISOString(),
   };
   if (fields.avatarUrl !== undefined) {
