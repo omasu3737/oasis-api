@@ -102,11 +102,13 @@ function UserCard({ item, onPress, C, elementColors, isDark, t }) {
         </View>
 
         {/* Resonance score */}
-        {score != null ? (
-          <Text style={{ fontSize: 16, fontWeight: '700', color: C.p }}>{score}%</Text>
-        ) : personaData ? (
-          <Text style={{ fontSize: 14, color: C.tm }}>?%</Text>
-        ) : null}
+        <View style={{ paddingRight: 14, alignItems: 'flex-end', minWidth: 52 }}>
+          {score != null ? (
+            <Text style={{ fontSize: 16, fontWeight: '700', color: C.p }}>{score}%</Text>
+          ) : personaData ? (
+            <Text style={{ fontSize: 14, color: C.tm }}>?%</Text>
+          ) : null}
+        </View>
       </View>
     </TouchableOpacity>
   );
