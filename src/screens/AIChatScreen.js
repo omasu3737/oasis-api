@@ -46,7 +46,8 @@ export default function AIChatScreen() {
           const aiMsg = { role: 'assistant', content: greeting };
           setMessages([aiMsg]);
           await saveMessage(user.id, 'assistant', greeting);
-        } catch {
+        } catch (e) {
+          console.log('onboarding error:', e?.message);
           setMessages([WELCOME]);
         } finally {
           setTyping(false);
