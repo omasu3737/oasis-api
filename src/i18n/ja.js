@@ -75,6 +75,7 @@ export default {
   me_cta_desc_long: '10回会話するとあなたの人格が分析されます\n話すほど、あなたのデジタル分身が育ちます',
   me_cta_button: 'AIと話す',
   me_personality: '人格特性',
+  me_analyzed: '解析済み',
   me_radar: '人格レーダー',
   me_traits: '特性スコア',
   me_trait_depth: '深さ',

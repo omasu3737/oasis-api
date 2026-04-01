@@ -480,6 +480,27 @@ export default async function handler(req, res) {
     return res.status(429).json({ error: 'Too many requests. Please wait.' });
   }
 
+  // オンボーディング状態取得
+  let onboardingComplete = true;
+  let userMsgCount = 0;
+  try {
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('onboarding_complete')
+      .eq('id', userId)
+      .maybeSingle();
+    onboardingComplete = profileData?.onboarding_complete === true;
+
+    if (!onboardingComplete) {
+      const { count: totalUserMsgCount } = await supabase
+        .from('ai_messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('role', 'user');
+      userMsgCount = totalUserMsgCount || 0;
+    }
+  } catch { /* オンボーディング取得失敗は通常モードで続行 */ }
+
   // サブスクリプションtier取得（ADMIN_USER_ID → DB → free の優先順）
   let userTier = 'free';
   try {
@@ -522,6 +543,50 @@ export default async function handler(req, res) {
     }
   } catch { /* 制限チェック失敗は続行 */ }
 
+  // オンボーディングシステムプロンプト構築
+  const ONBOARDING_QUESTIONS = [
+    'Q1: 最近、心が動いた出来事や体験を教えてもらえますか？',
+    'Q2: 人と話すとき、どんな会話が一番楽しいと感じますか？',
+    'Q3: 一人の時間と誰かといる時間、どちらが好きですか？その理由も聞かせてください。',
+    'Q4: 悩んでいるとき、あなたはどうすることが多いですか？',
+    'Q5: 仕事や日常の中で、どんな瞬間にやりがいや充実感を感じますか？',
+    'Q6: 大切な決断をするとき、何を一番重視しますか？',
+    'Q7: ストレスを感じたとき、どう対処することが多いですか？',
+    'Q8: 「この人と気が合う」と感じる人は、どんなタイプですか？',
+    'Q9: 理想の一日を自由に過ごせるとしたら、どう過ごしますか？',
+    'Q10: 自分のことをどんな人間だと思いますか？',
+  ];
+
+  const lastUserMsg = messages[messages.length - 1]?.content;
+  let onboardingSystemInject = '';
+
+  if (lastUserMsg === '__ONBOARDING_START__') {
+    onboardingSystemInject = `
+はじめてのユーザーです。以下の挨拶をしてください：
+「はじめまして！私はOASISのAIです。まずはあなたのことを知りたいので、10個の質問をさせてください😊
+1つ目：最近、心が動いた出来事や体験を教えてもらえますか？」
+余計なことは言わず、この文章だけを返してください。
+`;
+  } else if (!onboardingComplete) {
+    if (userMsgCount < 10) {
+      const currentQ = ONBOARDING_QUESTIONS[userMsgCount];
+      onboardingSystemInject = `
+【オンボーディングモード - 厳守】
+あなたは今、ユーザーと初めて会話しています。以下の質問を1つずつ聞いてください。
+現在は ${currentQ} を聞く番です。
+ユーザーが関係のない話をしてきた場合は「なるほど！では、続けて聞かせてください。${currentQ}」のように優しく戻してください。
+分析や感想は不要です。質問を聞くことだけに集中してください。
+`;
+    } else if (userMsgCount === 10) {
+      // 10問完了：完了マークをバックグラウンドで実行
+      supabase.from('profiles').update({ onboarding_complete: true }).eq('id', userId).then(() => {}).catch(() => {});
+      onboardingSystemInject = `
+ユーザーが10個の質問すべてに答えてくれました。
+「ありがとうございます！10個の質問に答えてくれて嬉しいです。これからは自由に話しかけてください。あなたのことがよくわかってきました😊」と言って、通常の会話モードに移行してください。
+`;
+    }
+  }
+
   // STEP4: Retrieve relevant memories for context
   let memoryContext = '';
   if (userId) {
@@ -538,10 +603,14 @@ export default async function handler(req, res) {
     }
   }
 
-  const geminiMessages = messages.map(m => ({
-    role: m.role === 'assistant' ? 'model' : 'user',
-    parts: [{ text: m.content }]
-  }));
+  // __ONBOARDING_START__ はGeminiに送らない（ダミーメッセージ）
+  const filteredMessages = messages.filter(m => m.content !== '__ONBOARDING_START__');
+  const geminiMessages = filteredMessages.length > 0
+    ? filteredMessages.map(m => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }]
+      }))
+    : [{ role: 'user', parts: [{ text: 'こんにちは' }] }];
 
   try {
     // メインチャット応答（429リトライ付き）
@@ -555,7 +624,7 @@ export default async function handler(req, res) {
           body: JSON.stringify({
             system_instruction: {
               parts: [{
-                text: (system || '') + memoryContext + '\n\n重要：マークダウン記号（**、*、#など）は絶対に使わないこと。プレーンテキストのみで回答すること。簡潔に3文以内で答えること。' +
+                text: (system || '') + memoryContext + onboardingSystemInject + '\n\n重要：マークダウン記号（**、*、#など）は絶対に使わないこと。プレーンテキストのみで回答すること。簡潔に3文以内で答えること。' +
                   (isSoftLimit ? '\n\n【今日の締めくくり】今日はたくさん話してくれた。この返答をしっかりした後、会話の流れの中で自然に「今日はここまでにしようか」「続きはまた明日聞かせて」という雰囲気で締めくくること。システムメッセージのように言わず、あくまで会話として自然に。' : '')
               }]
             },

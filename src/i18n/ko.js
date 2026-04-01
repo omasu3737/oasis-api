@@ -75,6 +75,7 @@ export default {
   me_cta_desc_long: '10번 대화하면 나의 성격이 분석됩니다\n대화할수록 나의 디지털 분신이 성장합니다',
   me_cta_button: 'AI와 대화하기',
   me_personality: '성격 특성',
+  me_analyzed: '분석 완료',
   me_radar: '성격 레이더',
   me_traits: '특성 점수',
   me_trait_depth: '깊이',

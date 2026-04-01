@@ -37,7 +37,23 @@ export default function AIChatScreen() {
       setCurrentUser(user);
 
       const history = await loadMessages(user.id);
-      setMessages(history || [WELCOME]);
+      if (!history || history.length === 0) {
+        // 初回：AIに挨拶+Q1を自動生成させる
+        setMessages([]);
+        setTyping(true);
+        try {
+          const greeting = await sendToAI([{ role: 'user', content: '__ONBOARDING_START__' }], user.id);
+          const aiMsg = { role: 'assistant', content: greeting };
+          setMessages([aiMsg]);
+          await saveMessage(user.id, 'assistant', greeting);
+        } catch {
+          setMessages([WELCOME]);
+        } finally {
+          setTyping(false);
+        }
+      } else {
+        setMessages(history);
+      }
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: false }), 100);
     } catch (e) {
       Alert.alert(t('error'), t('chat_load_error'));

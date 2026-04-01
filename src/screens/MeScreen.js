@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Alert, Image, KeyboardAvoidingView, Modal, Platform, ScrollView,
+  Alert, Image, KeyboardAvoidingView, LayoutAnimation, Modal, Platform, ScrollView,
   Share, StyleSheet, Text, TextInput, TouchableOpacity, View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -56,7 +56,7 @@ function LockedCard({ icon, label, hint, isDeepAnalysis, userTier, convCount }) 
   return (
     <View style={s.lockedCard}>
       <View style={s.lockedBlur}>
-        <Ionicons name={icon} size={20} color={isDark ? C.t1 : C.t3} />
+        <Ionicons name={icon} size={20} color={C.t2} />
         <View style={{ flex: 1 }}>
           <Text style={s.lockedLabel}>{label}</Text>
           <Text style={s.lockedHint}>{displayHint}</Text>
@@ -73,7 +73,7 @@ function LockedCard({ icon, label, hint, isDeepAnalysis, userTier, convCount }) 
           ) : null}
         </View>
         <View style={s.lockIcon}>
-          <Ionicons name="lock-closed" size={16} color={isDark ? C.t2 : C.t3} />
+          <Ionicons name="lock-closed" size={16} color={C.t2} />
         </View>
       </View>
     </View>
@@ -97,6 +97,46 @@ function AnalysisCard({ title, mainText, description, tags, icon }) {
           ))}
         </View>
       ) : null}
+    </View>
+  );
+}
+
+// Collapsible card wrapper
+function CollapsibleCard({ cardId, icon, label, themeText, isLocked, hint, isDeepAnalysis, userTier, convCount, expandedCards, toggleCard, children }) {
+  const { colors: C } = useTheme();
+  const { t } = useI18n();
+  const s = getStyles(C);
+  const isExpanded = expandedCards?.has(cardId);
+
+  if (isLocked) {
+    return (
+      <LockedCard
+        icon={icon}
+        label={label}
+        hint={hint}
+        isDeepAnalysis={isDeepAnalysis}
+        userTier={userTier}
+        convCount={convCount}
+      />
+    );
+  }
+
+  return (
+    <View style={s.collapsibleCard}>
+      <TouchableOpacity
+        style={s.collapsibleHeader}
+        onPress={() => {
+          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+          toggleCard(cardId);
+        }}
+        activeOpacity={0.7}
+      >
+        <Ionicons name={icon} size={18} color={C.p} />
+        <Text style={s.collapsibleLabel}>{label}</Text>
+        <Text style={s.collapsibleTheme} numberOfLines={1}>{themeText || t('me_analyzed')}</Text>
+        <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={C.t2} />
+      </TouchableOpacity>
+      {isExpanded ? <View style={s.collapsibleBody}>{children}</View> : null}
     </View>
   );
 }
@@ -431,6 +471,7 @@ export default function MeScreen() {
   const { t } = useI18n();
   const s = getStyles(C);
 
+  const [expandedCards, setExpandedCards] = useState(new Set());
   const [profile, setProfile] = useState(null);
   const [personaData, setPersonaData] = useState(null);
   const [convCount, setConvCount] = useState(0);
@@ -445,6 +486,15 @@ export default function MeScreen() {
   const [twinConversations, setTwinConversations] = useState([]);
   const [showTwinLog, setShowTwinLog] = useState(false);
   const [userTier, setUserTier] = useState('free');
+
+  function toggleCard(cardId) {
+    setExpandedCards(prev => {
+      const next = new Set(prev);
+      if (next.has(cardId)) next.delete(cardId);
+      else next.add(cardId);
+      return next;
+    });
+  }
 
   useEffect(() => { loadData(); }, []);
 
@@ -651,30 +701,42 @@ export default function MeScreen() {
         <Divider />
 
         {/* Personality Radar */}
-        <SLabel text={t('me_radar')} />
-        {personaData ? (
+        <CollapsibleCard
+          cardId="radar"
+          icon="analytics-outline"
+          label={t('me_radar')}
+          themeText={t('me_analyzed')}
+          isLocked={!personaData}
+          hint={t('me_locked_10')}
+          expandedCards={expandedCards}
+          toggleCard={toggleCard}
+        >
           <RadarChart scores={personaData} />
-        ) : (
-          <LockedCard icon="analytics-outline" label={t('me_radar')} hint={t('me_locked_10')} />
-        )}
+        </CollapsibleCard>
 
         {/* Trait Scores */}
-        <SLabel text={t('me_traits')} />
-        {personaData ? (
+        <CollapsibleCard
+          cardId="traits"
+          icon="bar-chart-outline"
+          label={t('me_traits')}
+          themeText={t('me_analyzed')}
+          isLocked={!personaData}
+          hint={t('me_locked_10')}
+          expandedCards={expandedCards}
+          toggleCard={toggleCard}
+        >
           <View style={{ paddingHorizontal: 24, marginBottom: 14 }}>
             {[
-              [t('me_trait_depth'), personaData.depth],
-              [t('me_trait_will'), personaData.will],
-              [t('me_trait_action'), personaData.action],
-              [t('me_trait_resonance'), personaData.resonance],
-              [t('me_trait_stability'), personaData.stability],
+              [t('me_trait_depth'), personaData?.depth],
+              [t('me_trait_will'), personaData?.will],
+              [t('me_trait_action'), personaData?.action],
+              [t('me_trait_resonance'), personaData?.resonance],
+              [t('me_trait_stability'), personaData?.stability],
             ].map(([label, val]) => (
               <TraitBar key={label} label={label} value={val || 0} />
             ))}
           </View>
-        ) : (
-          <LockedCard icon="bar-chart-outline" label={t('me_traits')} hint={t('me_locked_10')} />
-        )}
+        </CollapsibleCard>
 
         <Divider />
 
@@ -697,101 +759,163 @@ export default function MeScreen() {
         ) : null}
 
         {/* Compatibility */}
-        <SLabel text={'✦ ' + t('me_compatibility')} />
-        {personaData?.compatibility_text ? (
+        <CollapsibleCard
+          cardId="compatibility"
+          icon="people-outline"
+          label={t('me_compatibility')}
+          themeText={personaData?.compatibility_text ? personaData.compatibility_text.substring(0, 25) + '…' : undefined}
+          isLocked={!personaData?.compatibility_text}
+          hint={t('me_locked_30')}
+          isDeepAnalysis
+          userTier={userTier}
+          convCount={convCount}
+          expandedCards={expandedCards}
+          toggleCard={toggleCard}
+        >
           <View style={s.compatCard}>
-            <Text style={s.compatText}>{personaData.compatibility_text}</Text>
+            <Text style={s.compatText}>{personaData?.compatibility_text}</Text>
           </View>
-        ) : (
-          <LockedCard icon="people-outline" label={t('me_compatibility')} hint={t('me_locked_30')} isDeepAnalysis userTier={userTier} convCount={convCount} />
-        )}
+        </CollapsibleCard>
 
         {/* Value Priorities */}
-        <SLabel text={t('me_values')} />
-        {personaData?.values_priority ? (
-          <AnalysisCard
-            title="PRIORITY"
-            mainText={personaData.values_priority.order || ''}
-            description={personaData.values_priority.description || ''}
-            tags={personaData.values_priority.tags || []}
-          />
-        ) : personaData?.values_profile ? (
-          <View style={s.analysisCard}>
-            <Text style={s.analysisLabel}>VALUES</Text>
-            <Text style={s.piLabel}>{t('me_values_core')}</Text>
-            <Text style={s.analysisMain}>{personaData.values_profile.core}</Text>
-            <Text style={s.piLabel}>{t('me_values_motivation')}</Text>
-            <Text style={s.analysisSub}>{personaData.values_profile.motivation}</Text>
-            <Text style={s.piLabel}>{t('me_values_worldview')}</Text>
-            <Text style={s.analysisSub}>{personaData.values_profile.worldview}</Text>
-          </View>
-        ) : (
-          <LockedCard icon="bar-chart-outline" label={t('me_values')} hint={t('me_locked_30')} isDeepAnalysis userTier={userTier} convCount={convCount} />
-        )}
+        <CollapsibleCard
+          cardId="values"
+          icon="bar-chart-outline"
+          label={t('me_values')}
+          themeText={personaData?.values_priority?.order || personaData?.values_profile?.core}
+          isLocked={!personaData?.values_priority && !personaData?.values_profile}
+          hint={t('me_locked_30')}
+          isDeepAnalysis
+          userTier={userTier}
+          convCount={convCount}
+          expandedCards={expandedCards}
+          toggleCard={toggleCard}
+        >
+          {personaData?.values_priority ? (
+            <AnalysisCard
+              title="PRIORITY"
+              mainText={personaData.values_priority.order || ''}
+              description={personaData.values_priority.description || ''}
+              tags={personaData.values_priority.tags || []}
+            />
+          ) : (
+            <View style={s.analysisCard}>
+              <Text style={s.analysisLabel}>VALUES</Text>
+              <Text style={s.piLabel}>{t('me_values_core')}</Text>
+              <Text style={s.analysisMain}>{personaData?.values_profile?.core}</Text>
+              <Text style={s.piLabel}>{t('me_values_motivation')}</Text>
+              <Text style={s.analysisSub}>{personaData?.values_profile?.motivation}</Text>
+              <Text style={s.piLabel}>{t('me_values_worldview')}</Text>
+              <Text style={s.analysisSub}>{personaData?.values_profile?.worldview}</Text>
+            </View>
+          )}
+        </CollapsibleCard>
 
         {/* Attachment Style */}
-        <SLabel text={t('me_attachment')} />
-        {personaData?.attachment_style ? (
+        <CollapsibleCard
+          cardId="attachment"
+          icon="heart-outline"
+          label={t('me_attachment')}
+          themeText={personaData?.attachment_style?.type}
+          isLocked={!personaData?.attachment_style}
+          hint={t('me_locked_30')}
+          isDeepAnalysis
+          userTier={userTier}
+          convCount={convCount}
+          expandedCards={expandedCards}
+          toggleCard={toggleCard}
+        >
           <AnalysisCard
-            mainText={personaData.attachment_style.type || ''}
-            description={personaData.attachment_style.description || ''}
-            tags={personaData.attachment_style.tags || []}
+            mainText={personaData?.attachment_style?.type || ''}
+            description={personaData?.attachment_style?.description || ''}
+            tags={personaData?.attachment_style?.tags || []}
           />
-        ) : (
-          <LockedCard icon="heart-outline" label={t('me_attachment')} hint={t('me_locked_30')} isDeepAnalysis userTier={userTier} convCount={convCount} />
-        )}
+        </CollapsibleCard>
 
         {/* Stress Response */}
-        <SLabel text={t('me_stress')} />
-        {personaData?.stress_response ? (
+        <CollapsibleCard
+          cardId="stress"
+          icon="flash-outline"
+          label={t('me_stress')}
+          themeText={personaData?.stress_response?.pattern}
+          isLocked={!personaData?.stress_response}
+          hint={t('me_locked_30')}
+          isDeepAnalysis
+          userTier={userTier}
+          convCount={convCount}
+          expandedCards={expandedCards}
+          toggleCard={toggleCard}
+        >
           <AnalysisCard
-            mainText={personaData.stress_response.pattern || ''}
-            description={personaData.stress_response.description || ''}
-            tags={personaData.stress_response.tags || []}
+            mainText={personaData?.stress_response?.pattern || ''}
+            description={personaData?.stress_response?.description || ''}
+            tags={personaData?.stress_response?.tags || []}
           />
-        ) : (
-          <LockedCard icon="flash-outline" label={t('me_stress')} hint={t('me_locked_30')} isDeepAnalysis userTier={userTier} convCount={convCount} />
-        )}
+        </CollapsibleCard>
 
         {/* Energy Source */}
-        <SLabel text={t('me_energy')} />
-        {personaData?.energy_source ? (
+        <CollapsibleCard
+          cardId="energy"
+          icon="battery-charging-outline"
+          label={t('me_energy')}
+          themeText={personaData?.energy_source?.recharge ? ('充電: ' + personaData.energy_source.recharge).substring(0, 22) + '…' : undefined}
+          isLocked={!personaData?.energy_source}
+          hint={t('me_locked_30')}
+          isDeepAnalysis
+          userTier={userTier}
+          convCount={convCount}
+          expandedCards={expandedCards}
+          toggleCard={toggleCard}
+        >
           <View style={s.analysisCard}>
             <Text style={s.piLabel}>{t('me_energy_recharge')}</Text>
-            <Text style={s.analysisSub}>{personaData.energy_source.recharge || ''}</Text>
+            <Text style={s.analysisSub}>{personaData?.energy_source?.recharge || ''}</Text>
             <Text style={[s.piLabel, { marginTop: 8 }]}>{t('me_energy_drain')}</Text>
-            <Text style={s.analysisSub}>{personaData.energy_source.drain || ''}</Text>
+            <Text style={s.analysisSub}>{personaData?.energy_source?.drain || ''}</Text>
           </View>
-        ) : (
-          <LockedCard icon="battery-charging-outline" label={t('me_energy')} hint={t('me_locked_30')} isDeepAnalysis userTier={userTier} convCount={convCount} />
-        )}
+        </CollapsibleCard>
 
         {/* Thinking Style */}
-        <SLabel text={t('me_thinking')} />
-        {personaData?.thinking_style ? (
+        <CollapsibleCard
+          cardId="thinking"
+          icon="bulb-outline"
+          label={t('me_thinking')}
+          themeText={personaData?.thinking_style?.pattern}
+          isLocked={!personaData?.thinking_style}
+          hint={t('me_locked_30')}
+          isDeepAnalysis
+          userTier={userTier}
+          convCount={convCount}
+          expandedCards={expandedCards}
+          toggleCard={toggleCard}
+        >
           <AnalysisCard
-            mainText={personaData.thinking_style.pattern || ''}
-            description={personaData.thinking_style.description || ''}
-            tags={personaData.thinking_style.tags || []}
+            mainText={personaData?.thinking_style?.pattern || ''}
+            description={personaData?.thinking_style?.description || ''}
+            tags={personaData?.thinking_style?.tags || []}
           />
-        ) : (
-          <LockedCard icon="bulb-outline" label={t('me_thinking')} hint={t('me_locked_30')} isDeepAnalysis userTier={userTier} convCount={convCount} />
-        )}
+        </CollapsibleCard>
 
         <Divider />
 
         {/* Writing Style Profile */}
-        <SLabel text={t('me_style')} />
-        {personaData?.style_profile ? (
+        <CollapsibleCard
+          cardId="style"
+          icon="pencil-outline"
+          label={t('me_style')}
+          themeText={personaData?.style_profile?.tone}
+          isLocked={!personaData?.style_profile}
+          hint={t('me_locked_10')}
+          expandedCards={expandedCards}
+          toggleCard={toggleCard}
+        >
           <View style={s.analysisCard}>
             <Text style={s.piLabel}>{t('me_style_tone')}</Text>
-            <Text style={s.analysisMain}>{personaData.style_profile.tone}</Text>
+            <Text style={s.analysisMain}>{personaData?.style_profile?.tone}</Text>
             <Text style={s.piLabel}>{t('me_style_length')}</Text>
-            <Text style={s.analysisSub}>{personaData.style_profile.sentence_length}</Text>
+            <Text style={s.analysisSub}>{personaData?.style_profile?.sentence_length}</Text>
           </View>
-        ) : (
-          <LockedCard icon="pencil-outline" label={t('me_style')} hint={t('me_locked_10')} />
-        )}
+        </CollapsibleCard>
 
         {/* Questions for You */}
         <Divider />
@@ -1074,6 +1198,17 @@ function getStyles(C) {
     barFill: { height: 4, backgroundColor: C.p, borderRadius: 2 },
     divider: { height: 1, backgroundColor: C.bm, marginHorizontal: 24, marginBottom: 14, marginTop: 8 },
     slabel: { fontSize: 10, color: C.t2, textTransform: 'uppercase', letterSpacing: 1 },
+    // Collapsible card
+    collapsibleCard: { marginBottom: 6 },
+    collapsibleHeader: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      paddingHorizontal: 24, paddingVertical: 12,
+      backgroundColor: C.bs, borderWidth: 1, borderColor: C.bm,
+      marginHorizontal: 24, borderRadius: 14,
+    },
+    collapsibleLabel: { fontSize: 12, fontWeight: '500', color: C.t1 },
+    collapsibleTheme: { flex: 1, fontSize: 11, color: C.t2, textAlign: 'right' },
+    collapsibleBody: { marginTop: 4 },
     // Deep analysis card
     analysisCard: { marginHorizontal: 24, marginBottom: 12, backgroundColor: C.bs, borderRadius: 16, padding: 14 },
     analysisIcon: { fontSize: 10, marginBottom: 4 },

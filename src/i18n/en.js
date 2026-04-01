@@ -75,6 +75,7 @@ export default {
   me_cta_desc_long: 'After 10 conversations, your personality will be analyzed\nThe more you talk, the more your digital twin grows',
   me_cta_button: 'Talk to AI',
   me_personality: 'Personality Traits',
+  me_analyzed: 'Analyzed',
   me_radar: 'Personality Radar',
   me_traits: 'Trait Scores',
   me_trait_depth: 'Depth',
