@@ -44,6 +44,11 @@ export default async function handler(req, res) {
   if (messages.length > 30) {
     return res.status(400).json({ error: 'too many messages' });
   }
+  for (const msg of messages) {
+    if (!msg || !msg.role || typeof msg.content !== 'string' || msg.content.length > 3000) {
+      return res.status(400).json({ error: 'invalid message format' });
+    }
+  }
   // UUIDフォーマット検証
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (!uuidRegex.test(targetUserId)) {

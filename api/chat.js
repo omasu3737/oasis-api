@@ -467,7 +467,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'too many messages' });
   }
   for (const msg of messages) {
-    if (!msg.role || typeof msg.content !== 'string' || msg.content.length > 3000) {
+    if (!msg || !msg.role || typeof msg.content !== 'string' || msg.content.length > 3000) {
       return res.status(400).json({ error: 'invalid message format' });
     }
   }
