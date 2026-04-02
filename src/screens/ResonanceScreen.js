@@ -238,7 +238,7 @@ export default function ResonanceScreen() {
         score: picked.score,
       });
     } catch (e) {
-      console.log('loadDailyResonance error:', e);
+      console.error('loadDailyResonance error:', e?.message || 'Unknown error');
     }
   }
 
@@ -345,7 +345,7 @@ export default function ResonanceScreen() {
       setUsers(result);
       setSearched(true);
     } catch (e) {
-      console.log('loadUsers error:', e);
+      console.error('loadUsers error:', e?.message || 'Unknown error');
       setUsers([]);
     } finally {
       setLoading(false);
