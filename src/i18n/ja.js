@@ -112,6 +112,9 @@ export default {
   me_share: 'シェア',
   me_share_msg: 'OASISでAIと話して自分の性格を分析してみよう！\nhttps://play.google.com/store/apps/details?id=com.omasu.oasis',
   me_preview: 'プレビュー',
+  me_upgrade_title: 'AIと話して自分を深く知ろう',
+  me_upgrade_desc: 'スタンダードプランにアップグレードすると\nAI人格分析・5軸スコア・深層分析が解放されます',
+  me_upgrade_btn: 'プランを見る',
   me_locked_hint: 'AIともっと話すと解放されます',
   me_locked_10: 'AIと10回会話すると解放',
   me_locked_30: '30回会話すると解放',
@@ -187,6 +190,9 @@ export default {
 
   // 共鳴タブ
   resonance_search_placeholder: 'ユーザー名を検索...',
+  resonance_daily_title: '今日の共鳴',
+  resonance_daily_score: '共鳴スコア',
+  resonance_daily_msg_btn: 'プロフィールを見る',
   resonance_high: '高共鳴',
   resonance_friend: '友人',
   resonance_romance: '恋愛',

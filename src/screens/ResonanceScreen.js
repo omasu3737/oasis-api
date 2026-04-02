@@ -143,6 +143,7 @@ export default function ResonanceScreen() {
   const [genderFilter, setGenderFilter] = useState('all'); // 'all' | 'male' | 'female' | 'other'
   const [userTier, setUserTier] = useState('free'); // will be fetched from DB later
   const [showPaywall, setShowPaywall] = useState(false);
+  const [dailyUser, setDailyUser] = useState(null); // 今日の共鳴ユーザー
 
   const FILTERS = [
     { key: 'all', label: t('resonance_filter_all') },
@@ -160,7 +161,7 @@ export default function ResonanceScreen() {
   const s = getStyles(C);
 
   // Auto-load on mount
-  useEffect(() => { loadUsers(); }, []);
+  useEffect(() => { loadUsers(); loadDailyResonance(); }, []);
 
   // Fetch subscription tier
   useEffect(() => {
@@ -178,6 +179,68 @@ export default function ResonanceScreen() {
     };
     fetchTier();
   }, []);
+
+  async function loadDailyResonance() {
+    try {
+      const currentUser = await getCurrentUser();
+      if (!currentUser) return;
+
+      // 自分の人格データ取得
+      const { data: myPD } = await supabase
+        .from('persona_data')
+        .select('depth, will, action, resonance, stability')
+        .eq('user_id', currentUser.id)
+        .single();
+      if (!myPD) return;
+
+      // 全ユーザーの共鳴スコア計算用データ取得
+      const { data: personas } = await supabase
+        .from('persona_data')
+        .select('user_id, persona_type, element_type, depth, will, action, resonance, stability');
+      if (!personas || personas.length === 0) return;
+
+      const otherPersonas = personas.filter(p => p.user_id !== currentUser.id);
+      if (otherPersonas.length === 0) return;
+
+      // スコア計算してソート
+      const scored = otherPersonas.map(p => ({
+        ...p,
+        score: calcResonanceScore(myPD, p),
+      })).filter(p => p.score != null).sort((a, b) => b.score - a.score);
+
+      if (scored.length === 0) return;
+
+      // 日付シードで今日の1人を選出（上位10人の中から）
+      const today = new Date();
+      const seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+      const pool = scored.slice(0, Math.min(10, scored.length));
+      const picked = pool[seed % pool.length];
+
+      // プロフィール取得
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('display_name, avatar_url')
+        .eq('id', picked.user_id)
+        .maybeSingle();
+
+      const { data: userRow } = await supabase
+        .from('users')
+        .select('name')
+        .eq('id', picked.user_id)
+        .maybeSingle();
+
+      setDailyUser({
+        userId: picked.user_id,
+        name: profile?.display_name || userRow?.name || t('resonance_default_user'),
+        avatarUrl: profile?.avatar_url || null,
+        personaType: picked.persona_type || null,
+        elementType: picked.element_type || null,
+        score: picked.score,
+      });
+    } catch (e) {
+      console.log('loadDailyResonance error:', e);
+    }
+  }
 
   async function loadUsers(searchQuery = '', filterKey = 'all') {
     setLoading(true);
@@ -366,6 +429,47 @@ export default function ResonanceScreen() {
         contentContainerStyle={{ paddingTop: 12, paddingBottom: 20 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.p} colors={[C.p]} />}
       >
+        {/* 今日の共鳴 */}
+        {dailyUser ? (
+          <View style={s.dailyCard}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+              <Ionicons name="heart" size={14} color={C.p} />
+              <Text style={s.dailyLabel}>{t('resonance_daily_title')}</Text>
+              <Text style={s.dailyDate}>
+                {new Date().getMonth() + 1}/{new Date().getDate()}
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+              <UserIcon name={dailyUser.name} size={52} imageUrl={dailyUser.avatarUrl} />
+              <View style={{ flex: 1 }}>
+                <Text style={s.dailyName} numberOfLines={1}>{dailyUser.name}</Text>
+                {dailyUser.personaType ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 }}>
+                    {dailyUser.elementType && elementColors[dailyUser.elementType] ? (
+                      <Text style={{ fontSize: 11 }}>{elementColors[dailyUser.elementType].emoji}</Text>
+                    ) : null}
+                    <Text style={s.dailyType}>{dailyUser.personaType}</Text>
+                  </View>
+                ) : null}
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={s.dailyScore}>{dailyUser.score}%</Text>
+                <Text style={s.dailyScoreLabel}>{t('resonance_daily_score')}</Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={s.dailyMsgBtn}
+              onPress={() => navigation.navigate('UserProfile', {
+                userId: dailyUser.userId,
+                userName: dailyUser.name,
+              })}
+            >
+              <Ionicons name="chatbubble-outline" size={14} color={C.white} />
+              <Text style={s.dailyMsgTxt}>{t('resonance_daily_msg_btn')}</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
         {loading ? (
           <View style={{ paddingTop: 8 }}>
             {[1,2,3,4].map(i => <UserCardSkeleton key={i} />)}
@@ -539,6 +643,24 @@ function getStyles(C) {
       fontSize: 12, color: C.tm, fontWeight: '500',
       paddingHorizontal: 20, marginBottom: 10,
     },
+    // 今日の共鳴カード
+    dailyCard: {
+      marginHorizontal: 16, marginBottom: 14,
+      backgroundColor: C.pp, borderWidth: 1, borderColor: C.pm,
+      borderRadius: 18, padding: 16,
+    },
+    dailyLabel: { fontSize: 12, fontWeight: '700', color: C.p, flex: 1 },
+    dailyDate: { fontSize: 11, color: C.tm },
+    dailyName: { fontSize: 15, fontWeight: '600', color: C.t1 },
+    dailyType: { fontSize: 12, color: C.p, fontWeight: '500' },
+    dailyScore: { fontSize: 20, fontWeight: '700', color: C.p },
+    dailyScoreLabel: { fontSize: 10, color: C.tm, marginTop: 2 },
+    dailyMsgBtn: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+      gap: 6, marginTop: 14, backgroundColor: C.p,
+      paddingVertical: 10, borderRadius: 14,
+    },
+    dailyMsgTxt: { fontSize: 13, fontWeight: '600', color: C.white },
     emptyArea: { paddingVertical: 60, paddingHorizontal: 32, alignItems: 'center' },
     emptyTitle: { fontSize: 15, fontWeight: '600', color: C.t2, marginBottom: 8, textAlign: 'center' },
     emptySub: { fontSize: 13, color: C.tm, lineHeight: 22, textAlign: 'center', marginBottom: 24 },

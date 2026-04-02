@@ -112,6 +112,9 @@ export default {
   me_share: 'Share',
   me_share_msg: 'Try OASIS – AI analyzes your personality through conversation and finds truly compatible people!\nhttps://play.google.com/store/apps/details?id=com.omasu.oasis',
   me_preview: 'Preview',
+  me_upgrade_title: 'Talk with AI to know yourself deeply',
+  me_upgrade_desc: 'Upgrade to Standard to unlock\nAI analysis, 5-axis scores & deep insights',
+  me_upgrade_btn: 'See Plans',
   me_locked_hint: 'Talk more with AI to unlock',
   me_locked_10: 'Unlocks after 10 conversations',
   me_locked_30: 'Unlocks after 30 conversations',
@@ -187,6 +190,9 @@ export default {
 
   // Resonance Tab
   resonance_search_placeholder: 'Search by username...',
+  resonance_daily_title: "Today's Resonance",
+  resonance_daily_score: 'Resonance',
+  resonance_daily_msg_btn: 'View Profile',
   resonance_high: 'High',
   resonance_friend: 'Friend',
   resonance_romance: 'Romance',

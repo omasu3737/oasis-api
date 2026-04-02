@@ -1,6 +1,5 @@
 import { waitUntil } from '@vercel/functions';
 import { createClient } from '@supabase/supabase-js';
-import { getInsuranceStatus, recordApiCost } from './insurance.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -468,7 +467,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'too many messages' });
   }
   for (const msg of messages) {
-    if (!msg.role || typeof msg.content !== 'string' || msg.content.length > 3000) {
+    if (!msg || !msg.role || typeof msg.content !== 'string' || msg.content.length > 3000) {
       return res.status(400).json({ error: 'invalid message format' });
     }
   }
@@ -480,27 +479,6 @@ export default async function handler(req, res) {
   if (!checkRateLimit(userId, 60, 60000)) {
     return res.status(429).json({ error: 'Too many requests. Please wait.' });
   }
-
-  // オンボーディング状態取得
-  let onboardingComplete = true;
-  let userMsgCount = 0;
-  try {
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('onboarding_complete')
-      .eq('id', userId)
-      .maybeSingle();
-    onboardingComplete = profileData?.onboarding_complete === true;
-
-    if (!onboardingComplete) {
-      const { count: totalUserMsgCount } = await supabase
-        .from('ai_messages')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .eq('role', 'user');
-      userMsgCount = totalUserMsgCount || 0;
-    }
-  } catch { /* オンボーディング取得失敗は通常モードで続行 */ }
 
   // サブスクリプションtier取得（ADMIN_USER_ID → DB → free の優先順）
   let userTier = 'free';
@@ -519,13 +497,8 @@ export default async function handler(req, res) {
     }
   } catch { /* tier取得失敗はfreeとして続行 */ }
 
-  // 保険チェック（月間API費用に基づいてfree制限を動的変更）
-  const insurance = await getInsuranceStatus();
-  // ¥5,000超: 無料プランを1日3回に制限
-  const freeDailyLimit = insurance.isWarningLevel ? insurance.freeLimitWarn : 5;
-
   // プラン別日次制限チェック
-  const dailyLimits = { free: freeDailyLimit, standard: 40, premium: 200 };
+  const dailyLimits = { free: 5, standard: 100, premium: 200 };
   const dailyLimit = dailyLimits[userTier] ?? 5;
   let isSoftLimit = false;
   try {
@@ -543,55 +516,11 @@ export default async function handler(req, res) {
     } else if (used >= dailyLimit) {
       // free / standard はハードリミット
       const upgradeMsg = userTier === 'free'
-        ? `今日の無料チャット（${dailyLimit}回）を使い切りました。スタンダードプランで40回/日に増やせます。`
+        ? `今日の無料チャット（${dailyLimit}回）を使い切りました。スタンダードプランで100回/日に増やせます。`
         : `今日のチャット（${dailyLimit}回）を使い切りました。プレミアムプランで無制限になります。`;
       return res.status(429).json({ error: 'daily_limit_reached', tier: userTier, limit: dailyLimit, message: upgradeMsg });
     }
   } catch { /* 制限チェック失敗は続行 */ }
-
-  // オンボーディングシステムプロンプト構築
-  const ONBOARDING_QUESTIONS = [
-    'Q1: 最近、心が動いた出来事や体験を教えてもらえますか？',
-    'Q2: 人と話すとき、どんな会話が一番楽しいと感じますか？',
-    'Q3: 一人の時間と誰かといる時間、どちらが好きですか？その理由も聞かせてください。',
-    'Q4: 悩んでいるとき、あなたはどうすることが多いですか？',
-    'Q5: 仕事や日常の中で、どんな瞬間にやりがいや充実感を感じますか？',
-    'Q6: 大切な決断をするとき、何を一番重視しますか？',
-    'Q7: ストレスを感じたとき、どう対処することが多いですか？',
-    'Q8: 「この人と気が合う」と感じる人は、どんなタイプですか？',
-    'Q9: 理想の一日を自由に過ごせるとしたら、どう過ごしますか？',
-    'Q10: 自分のことをどんな人間だと思いますか？',
-  ];
-
-  const lastUserMsg = messages[messages.length - 1]?.content;
-  let onboardingSystemInject = '';
-
-  if (lastUserMsg === '__ONBOARDING_START__') {
-    onboardingSystemInject = `
-はじめてのユーザーです。以下の挨拶をしてください：
-「はじめまして！私はOASISのAIです。まずはあなたのことを知りたいので、10個の質問をさせてください😊
-1つ目：最近、心が動いた出来事や体験を教えてもらえますか？」
-余計なことは言わず、この文章だけを返してください。
-`;
-  } else if (!onboardingComplete) {
-    if (userMsgCount < 10) {
-      const currentQ = ONBOARDING_QUESTIONS[userMsgCount];
-      onboardingSystemInject = `
-【オンボーディングモード - 厳守】
-あなたは今、ユーザーと初めて会話しています。以下の質問を1つずつ聞いてください。
-現在は ${currentQ} を聞く番です。
-ユーザーが関係のない話をしてきた場合は「なるほど！では、続けて聞かせてください。${currentQ}」のように優しく戻してください。
-分析や感想は不要です。質問を聞くことだけに集中してください。
-`;
-    } else if (userMsgCount === 10) {
-      // 10問完了：完了マークをバックグラウンドで実行
-      supabase.from('profiles').update({ onboarding_complete: true }).eq('id', userId).then(() => {}).catch(() => {});
-      onboardingSystemInject = `
-ユーザーが10個の質問すべてに答えてくれました。
-「ありがとうございます！10個の質問に答えてくれて嬉しいです。これからは自由に話しかけてください。あなたのことがよくわかってきました😊」と言って、通常の会話モードに移行してください。
-`;
-    }
-  }
 
   // STEP4: Retrieve relevant memories for context
   let memoryContext = '';
@@ -609,14 +538,10 @@ export default async function handler(req, res) {
     }
   }
 
-  // __ONBOARDING_START__ はGeminiに送らない（ダミーメッセージ）
-  const filteredMessages = messages.filter(m => m.content !== '__ONBOARDING_START__');
-  const geminiMessages = filteredMessages.length > 0
-    ? filteredMessages.map(m => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }]
-      }))
-    : [{ role: 'user', parts: [{ text: 'こんにちは' }] }];
+  const geminiMessages = messages.map(m => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }]
+  }));
 
   try {
     // メインチャット応答（429リトライ付き）
@@ -630,7 +555,7 @@ export default async function handler(req, res) {
           body: JSON.stringify({
             system_instruction: {
               parts: [{
-                text: (system || '') + memoryContext + onboardingSystemInject + '\n\n重要：マークダウン記号（**、*、#など）は絶対に使わないこと。プレーンテキストのみで回答すること。簡潔に3文以内で答えること。' +
+                text: (system || '') + memoryContext + '\n\n重要：マークダウン記号（**、*、#など）は絶対に使わないこと。プレーンテキストのみで回答すること。簡潔に3文以内で答えること。' +
                   (isSoftLimit ? '\n\n【今日の締めくくり】今日はたくさん話してくれた。この返答をしっかりした後、会話の流れの中で自然に「今日はここまでにしようか」「続きはまた明日聞かせて」という雰囲気で締めくくること。システムメッセージのように言わず、あくまで会話として自然に。' : '')
               }]
             },
@@ -671,8 +596,8 @@ export default async function handler(req, res) {
             .eq('user_id', userId)
             .eq('role', 'user');
 
-          // Personality analysis every 10 user messages
-          if (count > 0 && count % 10 === 0) {
+          // Personality analysis every 10 user messages（freeは分析しない）
+          if (userTier !== 'free' && count > 0 && count % 10 === 0) {
             const result = await analyzePersonality(userId);
             if (result) {
               await supabase
@@ -699,16 +624,20 @@ export default async function handler(req, res) {
               const newAnswerCount = qaAnswers?.length || 0;
               const shouldIncludeQA = newAnswerCount - qaAnalyzedCount >= 5;
 
-              // DM自分の発言（直近30件）
-              const { data: dmMessages } = await supabase
-                .from('direct_messages').select('content, created_at')
-                .eq('sender_id', userId)
-                .order('created_at', { ascending: false }).limit(30);
+              // DM自分の発言（プレミアムのみ、直近30件）
+              let dmMessages = [];
+              if (userTier === 'premium') {
+                const { data: dmData } = await supabase
+                  .from('direct_messages').select('content, created_at')
+                  .eq('sender_id', userId)
+                  .order('created_at', { ascending: false }).limit(30);
+                dmMessages = dmData || [];
+              }
 
               const deepResult = await analyzeDeepPersonality(
                 userId, count,
                 shouldIncludeQA ? (qaAnswers || []) : [],
-                dmMessages || [],
+                dmMessages,
                 deepInterval
               );
               if (deepResult) {
@@ -721,8 +650,6 @@ export default async function handler(req, res) {
 
           // STEP4: Create conversation summary if enough new messages
           await createSummaryIfNeeded(userId);
-          // 保険: APIコスト記録（有料API移行後に有効化される）
-          await recordApiCost();
         } catch (err) {
           console.error('background task error:', err?.message || 'Unknown error');
         }
