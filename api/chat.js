@@ -522,11 +522,11 @@ export default async function handler(req, res) {
   // 保険チェック（月間API費用に基づいてfree制限を動的変更）
   const insurance = await getInsuranceStatus();
   // ¥5,000超: 無料プランを1日3回に制限
-  const freeDailyLimit = insurance.isWarningLevel ? insurance.freeLimitWarn : 15;
+  const freeDailyLimit = insurance.isWarningLevel ? insurance.freeLimitWarn : 5;
 
   // プラン別日次制限チェック
   const dailyLimits = { free: freeDailyLimit, standard: 40, premium: 200 };
-  const dailyLimit = dailyLimits[userTier] ?? 15;
+  const dailyLimit = dailyLimits[userTier] ?? 5;
   let isSoftLimit = false;
   try {
     const todayStart = new Date();
