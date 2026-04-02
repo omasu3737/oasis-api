@@ -38,11 +38,17 @@ export default function AIChatScreen() {
 
       const history = await loadMessages(user.id);
       if (!history || history.length === 0) {
-        // 初回：AIに挨拶+Q1を自動生成させる
+        // 初回：AIに挨拶+Q1を自動生成させる（レート制限時は3秒後にリトライ）
         setMessages([]);
         setTyping(true);
         try {
-          const greeting = await sendToAI([{ role: 'user', content: '__ONBOARDING_START__' }], user.id);
+          let greeting;
+          try {
+            greeting = await sendToAI([{ role: 'user', content: '__ONBOARDING_START__' }], user.id);
+          } catch {
+            await new Promise(r => setTimeout(r, 30000));
+            greeting = await sendToAI([{ role: 'user', content: '__ONBOARDING_START__' }], user.id);
+          }
           const aiMsg = { role: 'assistant', content: greeting };
           setMessages([aiMsg]);
           await saveMessage(user.id, 'assistant', greeting);
@@ -51,6 +57,7 @@ export default function AIChatScreen() {
         } finally {
           setTyping(false);
         }
+
       } else {
         setMessages(history);
       }
