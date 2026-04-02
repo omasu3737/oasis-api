@@ -1,5 +1,6 @@
 import { waitUntil } from '@vercel/functions';
 import { createClient } from '@supabase/supabase-js';
+import { getInsuranceStatus, recordApiCost } from './insurance.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -518,8 +519,13 @@ export default async function handler(req, res) {
     }
   } catch { /* tier取得失敗はfreeとして続行 */ }
 
+  // 保険チェック（月間API費用に基づいてfree制限を動的変更）
+  const insurance = await getInsuranceStatus();
+  // ¥5,000超: 無料プランを1日3回に制限
+  const freeDailyLimit = insurance.isWarningLevel ? insurance.freeLimitWarn : 15;
+
   // プラン別日次制限チェック
-  const dailyLimits = { free: 15, standard: 40, premium: 200 };
+  const dailyLimits = { free: freeDailyLimit, standard: 40, premium: 200 };
   const dailyLimit = dailyLimits[userTier] ?? 15;
   let isSoftLimit = false;
   try {
@@ -715,6 +721,8 @@ export default async function handler(req, res) {
 
           // STEP4: Create conversation summary if enough new messages
           await createSummaryIfNeeded(userId);
+          // 保険: APIコスト記録（有料API移行後に有効化される）
+          await recordApiCost();
         } catch (err) {
           console.error('background task error:', err?.message || 'Unknown error');
         }

@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useI18n } from '../i18n';
 import { signIn, signUp, resetPassword } from '../services/auth';
+import { supabase } from '../supabase';
 
 export default function LoginScreen() {
   const { colors: C } = useTheme();
@@ -36,6 +37,19 @@ export default function LoginScreen() {
     if (password.length < 6) { showMsg(t('login_password_short')); return; }
     setLoading(true);
     setMsg('');
+    // 保険: 新規登録停止チェック（¥10,000超で管理者がONにする）
+    try {
+      const { data: insuranceCfg } = await supabase
+        .from('insurance_config')
+        .select('registration_blocked')
+        .eq('id', 1)
+        .maybeSingle();
+      if (insuranceCfg?.registration_blocked) {
+        showMsg(t('login_registration_blocked'));
+        setLoading(false);
+        return;
+      }
+    } catch { /* チェック失敗時は登録を続行 */ }
     const { error } = await signUp(email, password);
     if (error) showMsg(error.message);
     else { showMsg(t('login_confirm_email'), false); setMode('signin'); }

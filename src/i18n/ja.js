@@ -40,6 +40,7 @@ export default {
   login_reset_empty: 'メールアドレスを入力してください',
   login_reset_sent: 'パスワードリセットのメールを送信しました。メールをご確認ください',
   login_reset_failed: '送信に失敗しました。メールアドレスを確認してください',
+  login_registration_blocked: '現在、新規登録を一時停止しています。しばらくお待ちください',
 
   // わたしタブ
   me_settings: '設定',

@@ -40,6 +40,7 @@ export default {
   login_reset_empty: 'Please enter your email address',
   login_reset_sent: 'Password reset email sent. Please check your inbox.',
   login_reset_failed: 'Failed to send. Please check your email address.',
+  login_registration_blocked: 'New registrations are temporarily suspended. Please try again later.',
 
   // Me Tab
   me_settings: 'Settings',
