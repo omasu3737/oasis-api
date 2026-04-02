@@ -189,6 +189,9 @@ export default {
 
   // Resonance Tab
   resonance_search_placeholder: 'Search by username...',
+  resonance_daily_title: "Today's Resonance",
+  resonance_daily_score: 'Resonance',
+  resonance_daily_msg_btn: 'View Profile',
   resonance_high: 'High',
   resonance_friend: 'Friend',
   resonance_romance: 'Romance',

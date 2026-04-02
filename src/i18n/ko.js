@@ -187,6 +187,9 @@ export default {
 
   // 공명 탭
   resonance_search_placeholder: '사용자 이름 검색...',
+  resonance_daily_title: '오늘의 공명',
+  resonance_daily_score: '공명 점수',
+  resonance_daily_msg_btn: '프로필 보기',
   resonance_high: '고공명',
   resonance_friend: '친구',
   resonance_romance: '연애',

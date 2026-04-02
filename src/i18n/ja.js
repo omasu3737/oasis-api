@@ -189,6 +189,9 @@ export default {
 
   // 共鳴タブ
   resonance_search_placeholder: 'ユーザー名を検索...',
+  resonance_daily_title: '今日の共鳴',
+  resonance_daily_score: '共鳴スコア',
+  resonance_daily_msg_btn: 'プロフィールを見る',
   resonance_high: '高共鳴',
   resonance_friend: '友人',
   resonance_romance: '恋愛',
