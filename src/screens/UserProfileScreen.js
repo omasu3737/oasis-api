@@ -183,47 +183,17 @@ export default function UserProfileScreen() {
           </View>
         </View>
 
-        {/* 強化された共鳴カード */}
-        {persona && myPersona && (() => {
+        {/* 共鳴ポイントカード */}
+        {persona && myPersona && persona.compatibility_text && (() => {
           const res = calcResonanceDetail(myPersona, persona);
           if (!res) return null;
           return (
             <View style={s.resonanceCard}>
-              {/* ヘッダー：共鳴度 */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-                <Ionicons name="sparkles" size={16} color={'#e040fb'} />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                <Text style={{ color: C.p, fontSize: 10 }}>◆</Text>
                 <Text style={s.resonanceTitle}>{t('user_resonance')}</Text>
-                <View style={{ flex: 1 }} />
-                <Text style={{ color: '#e040fb', fontWeight: '700', fontSize: 18 }}>{res.overall}%</Text>
               </View>
-
-              {/* AI生成の共鳴テキスト */}
-              {persona.compatibility_text ? (
-                <Text style={[s.resonanceText, { marginBottom: 14 }]}>{persona.compatibility_text}</Text>
-              ) : null}
-
-              {/* 5軸ごとの共鳴バー */}
-              <Text style={{ color: C.t3, fontSize: 11, marginBottom: 8, letterSpacing: 0.5 }}>
-                {t('user_resonance_detail')}
-              </Text>
-              {res.axes.map(ax => (
-                <View key={ax.key} style={{ marginBottom: 8 }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 }}>
-                    <Text style={{ color: C.t2, fontSize: 12 }}>{t(ax.labelKey)}</Text>
-                    <Text style={{ color: ax.score >= 80 ? '#e040fb' : ax.score >= 60 ? C.p : C.t3, fontSize: 12, fontWeight: '600' }}>
-                      {ax.score}%
-                    </Text>
-                  </View>
-                  <View style={{ height: 4, backgroundColor: C.bm, borderRadius: 2 }}>
-                    <View style={{
-                      height: 4,
-                      width: `${ax.score}%`,
-                      backgroundColor: ax.score >= 80 ? '#e040fb' : ax.score >= 60 ? C.p : C.t3,
-                      borderRadius: 2,
-                    }} />
-                  </View>
-                </View>
-              ))}
+              <Text style={s.resonanceText}>{persona.compatibility_text}</Text>
             </View>
           );
         })()}

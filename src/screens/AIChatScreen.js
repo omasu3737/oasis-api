@@ -46,7 +46,7 @@ export default function AIChatScreen() {
           try {
             greeting = await sendToAI([{ role: 'user', content: '__ONBOARDING_START__' }], user.id);
           } catch {
-            await new Promise(r => setTimeout(r, 30000));
+            await new Promise(r => setTimeout(r, 65000));
             greeting = await sendToAI([{ role: 'user', content: '__ONBOARDING_START__' }], user.id);
           }
           const aiMsg = { role: 'assistant', content: greeting };
