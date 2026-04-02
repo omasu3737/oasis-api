@@ -656,8 +656,8 @@ export default function MeScreen() {
           </View>
         </View>
 
-        {/* Tags (style keywords) */}
-        {personaData?.style_profile?.keywords?.length > 0 ? (
+        {/* Tags (style keywords) - paid only */}
+        {userTier !== 'free' && personaData?.style_profile?.keywords?.length > 0 ? (
           <View style={s.tagsRow}>
             {personaData.style_profile.keywords.map((kw, i) => (
               <View key={i} style={s.tag}><Text style={s.tagTxt}>{kw}</Text></View>
@@ -677,68 +677,73 @@ export default function MeScreen() {
           </TouchableOpacity>
         ) : null}
 
-        {/* Analysis counter */}
-        <View style={s.counter}>
-          <Ionicons name="chatbubble-ellipses-outline" size={22} color={C.p} />
-          <View style={{ flex: 1 }}>
-            <Text style={s.counterTxt}>
-              {t('me_next_analysis_prefix')} <Text style={{ color: C.p }}>{remaining}</Text> {t('me_next_analysis_suffix')}
-            </Text>
-            <Text style={s.counterSub}>
-              {t('me_total_conv', { count: convCount })}
-            </Text>
-            <View style={s.barWrap}>
-              <View style={[s.barFill, { width: `${barPct}%` }]} />
+        {/* Analysis counter - paid only */}
+        {userTier !== 'free' ? (
+          <View style={s.counter}>
+            <Ionicons name="chatbubble-ellipses-outline" size={22} color={C.p} />
+            <View style={{ flex: 1 }}>
+              <Text style={s.counterTxt}>
+                {t('me_next_analysis_prefix')} <Text style={{ color: C.p }}>{remaining}</Text> {t('me_next_analysis_suffix')}
+              </Text>
+              <Text style={s.counterSub}>
+                {t('me_total_conv', { count: convCount })}
+              </Text>
+              <View style={s.barWrap}>
+                <View style={[s.barFill, { width: `${barPct}%` }]} />
+              </View>
+              {userTier === 'premium' && convCount >= 15 ? (
+                <Text style={{ fontSize: 10, color: C.tm, marginTop: 4 }}>深層分析：15回ごとに更新</Text>
+              ) : convCount >= 30 ? (
+                <Text style={{ fontSize: 10, color: C.tm, marginTop: 4 }}>深層分析：30回ごとに更新</Text>
+              ) : null}
             </View>
-            {userTier === 'premium' && convCount >= 15 ? (
-              <Text style={{ fontSize: 10, color: C.tm, marginTop: 4 }}>深層分析：15回ごとに更新</Text>
-            ) : convCount >= 30 ? (
-              <Text style={{ fontSize: 10, color: C.tm, marginTop: 4 }}>深層分析：30回ごとに更新</Text>
-            ) : null}
           </View>
-        </View>
+        ) : null}
 
         <Divider />
 
-        {/* Personality Radar */}
-        <CollapsibleCard
-          cardId="radar"
-          icon="analytics-outline"
-          label={t('me_radar')}
-          themeText={t('me_analyzed')}
-          isLocked={!personaData}
-          hint={t('me_locked_10')}
-          expandedCards={expandedCards}
-          toggleCard={toggleCard}
-        >
-          <RadarChart scores={personaData} />
-        </CollapsibleCard>
+        {/* Personality Radar + Traits - paid only */}
+        {userTier !== 'free' ? (
+          <>
+            <CollapsibleCard
+              cardId="radar"
+              icon="analytics-outline"
+              label={t('me_radar')}
+              themeText={t('me_analyzed')}
+              isLocked={!personaData}
+              hint={t('me_locked_10')}
+              expandedCards={expandedCards}
+              toggleCard={toggleCard}
+            >
+              <RadarChart scores={personaData} />
+            </CollapsibleCard>
 
-        {/* Trait Scores */}
-        <CollapsibleCard
-          cardId="traits"
-          icon="bar-chart-outline"
-          label={t('me_traits')}
-          themeText={t('me_analyzed')}
-          isLocked={!personaData}
-          hint={t('me_locked_10')}
-          expandedCards={expandedCards}
-          toggleCard={toggleCard}
-        >
-          <View style={{ paddingHorizontal: 24, marginBottom: 14 }}>
-            {[
-              [t('me_trait_depth'), personaData?.depth],
-              [t('me_trait_will'), personaData?.will],
-              [t('me_trait_action'), personaData?.action],
-              [t('me_trait_resonance'), personaData?.resonance],
-              [t('me_trait_stability'), personaData?.stability],
-            ].map(([label, val]) => (
-              <TraitBar key={label} label={label} value={val || 0} />
-            ))}
-          </View>
-        </CollapsibleCard>
+            <CollapsibleCard
+              cardId="traits"
+              icon="bar-chart-outline"
+              label={t('me_traits')}
+              themeText={t('me_analyzed')}
+              isLocked={!personaData}
+              hint={t('me_locked_10')}
+              expandedCards={expandedCards}
+              toggleCard={toggleCard}
+            >
+              <View style={{ paddingHorizontal: 24, marginBottom: 14 }}>
+                {[
+                  [t('me_trait_depth'), personaData?.depth],
+                  [t('me_trait_will'), personaData?.will],
+                  [t('me_trait_action'), personaData?.action],
+                  [t('me_trait_resonance'), personaData?.resonance],
+                  [t('me_trait_stability'), personaData?.stability],
+                ].map(([label, val]) => (
+                  <TraitBar key={label} label={label} value={val || 0} />
+                ))}
+              </View>
+            </CollapsibleCard>
 
-        <Divider />
+            <Divider />
+          </>
+        ) : null}
 
         {/* Profile info */}
         {(profile?.age || profile?.birthday || profile?.bio) ? (
@@ -758,164 +763,185 @@ export default function MeScreen() {
           </>
         ) : null}
 
-        {/* Compatibility */}
-        <CollapsibleCard
-          cardId="compatibility"
-          icon="people-outline"
-          label={t('me_compatibility')}
-          themeText={personaData?.compatibility_text ? personaData.compatibility_text.substring(0, 25) + '…' : undefined}
-          isLocked={!personaData?.compatibility_text}
-          hint={t('me_locked_30')}
-          isDeepAnalysis
-          userTier={userTier}
-          convCount={convCount}
-          expandedCards={expandedCards}
-          toggleCard={toggleCard}
-        >
-          <View style={s.compatCard}>
-            <Text style={s.compatText}>{personaData?.compatibility_text}</Text>
+        {/* Deep analysis - paid only / upgrade CTA for free */}
+        {userTier !== 'free' ? (
+          <>
+            {/* Compatibility */}
+            <CollapsibleCard
+              cardId="compatibility"
+              icon="people-outline"
+              label={t('me_compatibility')}
+              themeText={personaData?.compatibility_text ? personaData.compatibility_text.substring(0, 25) + '…' : undefined}
+              isLocked={!personaData?.compatibility_text}
+              hint={t('me_locked_30')}
+              isDeepAnalysis
+              userTier={userTier}
+              convCount={convCount}
+              expandedCards={expandedCards}
+              toggleCard={toggleCard}
+            >
+              <View style={s.compatCard}>
+                <Text style={s.compatText}>{personaData?.compatibility_text}</Text>
+              </View>
+            </CollapsibleCard>
+
+            {/* Value Priorities */}
+            <CollapsibleCard
+              cardId="values"
+              icon="bar-chart-outline"
+              label={t('me_values')}
+              themeText={personaData?.values_priority?.order || personaData?.values_profile?.core}
+              isLocked={!personaData?.values_priority && !personaData?.values_profile}
+              hint={t('me_locked_30')}
+              isDeepAnalysis
+              userTier={userTier}
+              convCount={convCount}
+              expandedCards={expandedCards}
+              toggleCard={toggleCard}
+            >
+              {personaData?.values_priority ? (
+                <AnalysisCard
+                  title="PRIORITY"
+                  mainText={personaData.values_priority.order || ''}
+                  description={personaData.values_priority.description || ''}
+                  tags={personaData.values_priority.tags || []}
+                />
+              ) : (
+                <View style={s.analysisCard}>
+                  <Text style={s.analysisLabel}>VALUES</Text>
+                  <Text style={s.piLabel}>{t('me_values_core')}</Text>
+                  <Text style={s.analysisMain}>{personaData?.values_profile?.core}</Text>
+                  <Text style={s.piLabel}>{t('me_values_motivation')}</Text>
+                  <Text style={s.analysisSub}>{personaData?.values_profile?.motivation}</Text>
+                  <Text style={s.piLabel}>{t('me_values_worldview')}</Text>
+                  <Text style={s.analysisSub}>{personaData?.values_profile?.worldview}</Text>
+                </View>
+              )}
+            </CollapsibleCard>
+
+            {/* Attachment Style */}
+            <CollapsibleCard
+              cardId="attachment"
+              icon="heart-outline"
+              label={t('me_attachment')}
+              themeText={personaData?.attachment_style?.type}
+              isLocked={!personaData?.attachment_style}
+              hint={t('me_locked_30')}
+              isDeepAnalysis
+              userTier={userTier}
+              convCount={convCount}
+              expandedCards={expandedCards}
+              toggleCard={toggleCard}
+            >
+              <AnalysisCard
+                mainText={personaData?.attachment_style?.type || ''}
+                description={personaData?.attachment_style?.description || ''}
+                tags={personaData?.attachment_style?.tags || []}
+              />
+            </CollapsibleCard>
+
+            {/* Stress Response */}
+            <CollapsibleCard
+              cardId="stress"
+              icon="flash-outline"
+              label={t('me_stress')}
+              themeText={personaData?.stress_response?.pattern}
+              isLocked={!personaData?.stress_response}
+              hint={t('me_locked_30')}
+              isDeepAnalysis
+              userTier={userTier}
+              convCount={convCount}
+              expandedCards={expandedCards}
+              toggleCard={toggleCard}
+            >
+              <AnalysisCard
+                mainText={personaData?.stress_response?.pattern || ''}
+                description={personaData?.stress_response?.description || ''}
+                tags={personaData?.stress_response?.tags || []}
+              />
+            </CollapsibleCard>
+
+            {/* Energy Source */}
+            <CollapsibleCard
+              cardId="energy"
+              icon="battery-charging-outline"
+              label={t('me_energy')}
+              themeText={personaData?.energy_source?.recharge ? ('充電: ' + personaData.energy_source.recharge).substring(0, 22) + '…' : undefined}
+              isLocked={!personaData?.energy_source}
+              hint={t('me_locked_30')}
+              isDeepAnalysis
+              userTier={userTier}
+              convCount={convCount}
+              expandedCards={expandedCards}
+              toggleCard={toggleCard}
+            >
+              <View style={s.analysisCard}>
+                <Text style={s.piLabel}>{t('me_energy_recharge')}</Text>
+                <Text style={s.analysisSub}>{personaData?.energy_source?.recharge || ''}</Text>
+                <Text style={[s.piLabel, { marginTop: 8 }]}>{t('me_energy_drain')}</Text>
+                <Text style={s.analysisSub}>{personaData?.energy_source?.drain || ''}</Text>
+              </View>
+            </CollapsibleCard>
+
+            {/* Thinking Style */}
+            <CollapsibleCard
+              cardId="thinking"
+              icon="bulb-outline"
+              label={t('me_thinking')}
+              themeText={personaData?.thinking_style?.pattern}
+              isLocked={!personaData?.thinking_style}
+              hint={t('me_locked_30')}
+              isDeepAnalysis
+              userTier={userTier}
+              convCount={convCount}
+              expandedCards={expandedCards}
+              toggleCard={toggleCard}
+            >
+              <AnalysisCard
+                mainText={personaData?.thinking_style?.pattern || ''}
+                description={personaData?.thinking_style?.description || ''}
+                tags={personaData?.thinking_style?.tags || []}
+              />
+            </CollapsibleCard>
+
+            <Divider />
+
+            {/* Writing Style Profile */}
+            <CollapsibleCard
+              cardId="style"
+              icon="pencil-outline"
+              label={t('me_style')}
+              themeText={personaData?.style_profile?.tone}
+              isLocked={!personaData?.style_profile}
+              hint={t('me_locked_10')}
+              expandedCards={expandedCards}
+              toggleCard={toggleCard}
+            >
+              <View style={s.analysisCard}>
+                <Text style={s.piLabel}>{t('me_style_tone')}</Text>
+                <Text style={s.analysisMain}>{personaData?.style_profile?.tone}</Text>
+                <Text style={s.piLabel}>{t('me_style_length')}</Text>
+                <Text style={s.analysisSub}>{personaData?.style_profile?.sentence_length}</Text>
+              </View>
+            </CollapsibleCard>
+          </>
+        ) : (
+          <View style={s.upgradeCard}>
+            <Ionicons name="sparkles" size={28} color={C.p} style={{ marginBottom: 8 }} />
+            <Text style={s.upgradeTitle}>{t('me_upgrade_title')}</Text>
+            <Text style={s.upgradeSub}>{t('me_upgrade_desc')}</Text>
+            <TouchableOpacity
+              style={s.upgradeBtn}
+              onPress={() => Alert.alert(
+                'プランについて',
+                'スタンダード ¥580/月\n・100回/日 + AI人格分析\n\nプレミアム ¥1,280/月\n・200回/日 + 深層分析（15回で解放）',
+                [{ text: '閉じる', style: 'cancel' }]
+              )}
+            >
+              <Text style={s.upgradeBtnTxt}>{t('me_upgrade_btn')}</Text>
+            </TouchableOpacity>
           </View>
-        </CollapsibleCard>
-
-        {/* Value Priorities */}
-        <CollapsibleCard
-          cardId="values"
-          icon="bar-chart-outline"
-          label={t('me_values')}
-          themeText={personaData?.values_priority?.order || personaData?.values_profile?.core}
-          isLocked={!personaData?.values_priority && !personaData?.values_profile}
-          hint={t('me_locked_30')}
-          isDeepAnalysis
-          userTier={userTier}
-          convCount={convCount}
-          expandedCards={expandedCards}
-          toggleCard={toggleCard}
-        >
-          {personaData?.values_priority ? (
-            <AnalysisCard
-              title="PRIORITY"
-              mainText={personaData.values_priority.order || ''}
-              description={personaData.values_priority.description || ''}
-              tags={personaData.values_priority.tags || []}
-            />
-          ) : (
-            <View style={s.analysisCard}>
-              <Text style={s.analysisLabel}>VALUES</Text>
-              <Text style={s.piLabel}>{t('me_values_core')}</Text>
-              <Text style={s.analysisMain}>{personaData?.values_profile?.core}</Text>
-              <Text style={s.piLabel}>{t('me_values_motivation')}</Text>
-              <Text style={s.analysisSub}>{personaData?.values_profile?.motivation}</Text>
-              <Text style={s.piLabel}>{t('me_values_worldview')}</Text>
-              <Text style={s.analysisSub}>{personaData?.values_profile?.worldview}</Text>
-            </View>
-          )}
-        </CollapsibleCard>
-
-        {/* Attachment Style */}
-        <CollapsibleCard
-          cardId="attachment"
-          icon="heart-outline"
-          label={t('me_attachment')}
-          themeText={personaData?.attachment_style?.type}
-          isLocked={!personaData?.attachment_style}
-          hint={t('me_locked_30')}
-          isDeepAnalysis
-          userTier={userTier}
-          convCount={convCount}
-          expandedCards={expandedCards}
-          toggleCard={toggleCard}
-        >
-          <AnalysisCard
-            mainText={personaData?.attachment_style?.type || ''}
-            description={personaData?.attachment_style?.description || ''}
-            tags={personaData?.attachment_style?.tags || []}
-          />
-        </CollapsibleCard>
-
-        {/* Stress Response */}
-        <CollapsibleCard
-          cardId="stress"
-          icon="flash-outline"
-          label={t('me_stress')}
-          themeText={personaData?.stress_response?.pattern}
-          isLocked={!personaData?.stress_response}
-          hint={t('me_locked_30')}
-          isDeepAnalysis
-          userTier={userTier}
-          convCount={convCount}
-          expandedCards={expandedCards}
-          toggleCard={toggleCard}
-        >
-          <AnalysisCard
-            mainText={personaData?.stress_response?.pattern || ''}
-            description={personaData?.stress_response?.description || ''}
-            tags={personaData?.stress_response?.tags || []}
-          />
-        </CollapsibleCard>
-
-        {/* Energy Source */}
-        <CollapsibleCard
-          cardId="energy"
-          icon="battery-charging-outline"
-          label={t('me_energy')}
-          themeText={personaData?.energy_source?.recharge ? ('充電: ' + personaData.energy_source.recharge).substring(0, 22) + '…' : undefined}
-          isLocked={!personaData?.energy_source}
-          hint={t('me_locked_30')}
-          isDeepAnalysis
-          userTier={userTier}
-          convCount={convCount}
-          expandedCards={expandedCards}
-          toggleCard={toggleCard}
-        >
-          <View style={s.analysisCard}>
-            <Text style={s.piLabel}>{t('me_energy_recharge')}</Text>
-            <Text style={s.analysisSub}>{personaData?.energy_source?.recharge || ''}</Text>
-            <Text style={[s.piLabel, { marginTop: 8 }]}>{t('me_energy_drain')}</Text>
-            <Text style={s.analysisSub}>{personaData?.energy_source?.drain || ''}</Text>
-          </View>
-        </CollapsibleCard>
-
-        {/* Thinking Style */}
-        <CollapsibleCard
-          cardId="thinking"
-          icon="bulb-outline"
-          label={t('me_thinking')}
-          themeText={personaData?.thinking_style?.pattern}
-          isLocked={!personaData?.thinking_style}
-          hint={t('me_locked_30')}
-          isDeepAnalysis
-          userTier={userTier}
-          convCount={convCount}
-          expandedCards={expandedCards}
-          toggleCard={toggleCard}
-        >
-          <AnalysisCard
-            mainText={personaData?.thinking_style?.pattern || ''}
-            description={personaData?.thinking_style?.description || ''}
-            tags={personaData?.thinking_style?.tags || []}
-          />
-        </CollapsibleCard>
-
-        <Divider />
-
-        {/* Writing Style Profile */}
-        <CollapsibleCard
-          cardId="style"
-          icon="pencil-outline"
-          label={t('me_style')}
-          themeText={personaData?.style_profile?.tone}
-          isLocked={!personaData?.style_profile}
-          hint={t('me_locked_10')}
-          expandedCards={expandedCards}
-          toggleCard={toggleCard}
-        >
-          <View style={s.analysisCard}>
-            <Text style={s.piLabel}>{t('me_style_tone')}</Text>
-            <Text style={s.analysisMain}>{personaData?.style_profile?.tone}</Text>
-            <Text style={s.piLabel}>{t('me_style_length')}</Text>
-            <Text style={s.analysisSub}>{personaData?.style_profile?.sentence_length}</Text>
-          </View>
-        </CollapsibleCard>
+        )}
 
         {/* Questions for You */}
         <Divider />
@@ -1256,6 +1282,12 @@ function getStyles(C) {
     piLabel: { fontSize: 10, color: C.tm, width: 56, flexShrink: 0, paddingTop: 1 },
     piVal: { fontSize: 12, color: C.t1, flex: 1, lineHeight: 18 },
     // Share
+    // Upgrade CTA (free tier)
+    upgradeCard: { marginHorizontal: 24, marginBottom: 16, backgroundColor: C.card, borderWidth: 1, borderColor: C.bm, borderRadius: 20, padding: 24, alignItems: 'center' },
+    upgradeTitle: { fontSize: 15, fontWeight: '600', color: C.t1, marginBottom: 6, textAlign: 'center' },
+    upgradeSub: { fontSize: 12, color: C.t2, textAlign: 'center', lineHeight: 20, marginBottom: 16 },
+    upgradeBtn: { backgroundColor: C.p, paddingHorizontal: 28, paddingVertical: 11, borderRadius: 20 },
+    upgradeBtnTxt: { fontSize: 13, fontWeight: '600', color: C.white },
     shareBtn: { flex: 1, padding: 11, backgroundColor: C.pp, borderWidth: 1, borderColor: C.bm, borderRadius: 14, alignItems: 'center' },
     previewBtn: { flex: 1, padding: 11, backgroundColor: C.card, borderWidth: 1, borderColor: C.bm, borderRadius: 14, alignItems: 'center' },
     shareBtnTxt: { fontSize: 12, color: C.p },
