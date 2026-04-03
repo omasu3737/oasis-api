@@ -297,7 +297,6 @@ export default {
   diag_welcome_title: 'Welcome to OASIS',
   diag_welcome_subtitle: 'Your personality type has been determined',
   diag_your_type: 'YOUR TYPE',
-  diag_type_suffix: '',
   diag_element_wind: 'Wind',
   diag_element_fire: 'Fire',
   diag_element_water: 'Water',

@@ -297,7 +297,6 @@ export default {
   diag_welcome_title: 'OASISへようこそ',
   diag_welcome_subtitle: 'あなたのタイプが判定されました',
   diag_your_type: 'YOUR TYPE',
-  diag_type_suffix: '型',
   diag_element_wind: '風型',
   diag_element_fire: '炎型',
   diag_element_water: '水型',
