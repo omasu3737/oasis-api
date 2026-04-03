@@ -348,6 +348,28 @@ export default {
   diag_q24: '困っている人を見ると、放っておけずに声をかけてしまう',
   diag_q25: '強いプレッシャーの下でも、極端に感情的になることは少ない',
 
+  // 課金誘導モーダル（PaywallModal）
+  paywall_standard: 'スタンダード',
+  paywall_premium: 'プレミアム',
+  paywall_standard_desc: 'AIチャット100回/日\n人格分析・共鳴・分身AI',
+  paywall_premium_desc: 'AIチャット200回/日\nDM分析・バッジ・全機能',
+  paywall_cta: 'プランを見る',
+  paywall_later: '後で',
+
+  // 機能別タイトル・説明
+  paywall_feature_analysis_title: '🔒 AI人格分析を解放しよう',
+  paywall_feature_analysis_desc: 'AIと話すほど育つ人格分析。\n5軸スコア・深層分析・共鳴スコアが解放されます。',
+  paywall_feature_resonance_title: '🔒 共鳴スコアを解放しよう',
+  paywall_feature_resonance_desc: '友人・恋愛・仕事の相性でぴったりな人を見つけよう。\nスタンダードプランで利用できます。',
+  paywall_feature_twin_title: '🔒 分身AIを解放しよう',
+  paywall_feature_twin_desc: 'あなたのAIが他のユーザーと話す。\n分身AIの閲覧・会話がスタンダードで解放されます。',
+  paywall_feature_dm_title: '🔒 DM分析を解放しよう',
+  paywall_feature_dm_desc: 'DMの会話から相手の性格を深く分析。\nプレミアムプラン限定の機能です。',
+  paywall_feature_retake_title: '🔒 再診断を解放しよう',
+  paywall_feature_retake_desc: '診断をやり直して最新の自分を記録しよう。\nスタンダードプランで再診断が可能になります。',
+  paywall_feature_default_title: '🔒 スタンダードで解放',
+  paywall_feature_default_desc: 'AIと話して自分を深く知ろう。\n人格分析・共鳴・分身AIが使えます。',
+
   // 設定
   settings_title: '設定',
 

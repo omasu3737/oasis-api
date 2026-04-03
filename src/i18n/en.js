@@ -343,6 +343,27 @@ export default {
   diag_q24: 'When I see someone struggling, I cannot help but reach out to them',
   diag_q25: 'Even under strong pressure, I rarely become extremely emotional',
 
+  // Paywall Modal
+  paywall_standard: 'Standard',
+  paywall_premium: 'Premium',
+  paywall_standard_desc: 'AI chat 100x/day\nAnalysis · Resonance · Twin AI',
+  paywall_premium_desc: 'AI chat 200x/day\nDM analysis · Badge · All features',
+  paywall_cta: 'See Plans',
+  paywall_later: 'Later',
+
+  paywall_feature_analysis_title: '🔒 Unlock AI Personality Analysis',
+  paywall_feature_analysis_desc: 'Your personality grows with every conversation.\n5-axis scores, deep analysis, and resonance are unlocked.',
+  paywall_feature_resonance_title: '🔒 Unlock Resonance Scores',
+  paywall_feature_resonance_desc: 'Find people who match you in friendship, romance, and work.\nAvailable on the Standard plan.',
+  paywall_feature_twin_title: '🔒 Unlock Twin AI',
+  paywall_feature_twin_desc: 'Your AI twin talks to other users on your behalf.\nUnlocked with the Standard plan.',
+  paywall_feature_dm_title: '🔒 Unlock DM Analysis',
+  paywall_feature_dm_desc: 'Deeply analyze personalities from DM conversations.\nExclusive to the Premium plan.',
+  paywall_feature_retake_title: '🔒 Unlock Retake',
+  paywall_feature_retake_desc: 'Redo your assessment to reflect who you are today.\nAvailable on the Standard plan.',
+  paywall_feature_default_title: '🔒 Unlock with Standard',
+  paywall_feature_default_desc: 'Talk to AI to discover your deeper self.\nPersonality analysis, resonance, and Twin AI await.',
+
   // Settings
   settings_title: 'Settings',
 

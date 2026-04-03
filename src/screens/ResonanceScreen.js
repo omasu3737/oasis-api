@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
+import PaywallModal from '../components/PaywallModal';
 import { useNavigation } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
 import {
-  Modal, RefreshControl, ScrollView, Share, StyleSheet, Text,
+  RefreshControl, ScrollView, Share, StyleSheet, Text,
   TextInput, TouchableOpacity, View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -524,91 +525,11 @@ export default function ResonanceScreen() {
       </ScrollView>
 
       {/* Paywall Modal */}
-      <Modal
+      <PaywallModal
         visible={showPaywall}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowPaywall(false)}
-      >
-        <TouchableOpacity
-          style={{ flex: 1, backgroundColor: C.overlay, justifyContent: 'center', alignItems: 'center' }}
-          activeOpacity={1}
-          onPress={() => setShowPaywall(false)}
-        >
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={() => {}}
-            style={{
-              backgroundColor: C.card,
-              borderRadius: 20,
-              padding: 24,
-              marginHorizontal: 24,
-              width: '88%',
-              borderWidth: 1,
-              borderColor: C.bd,
-            }}
-          >
-            {/* Close button */}
-            <TouchableOpacity
-              onPress={() => setShowPaywall(false)}
-              style={{ position: 'absolute', top: 14, right: 14, padding: 4 }}
-            >
-              <Ionicons name="close" size={20} color={C.tm} />
-            </TouchableOpacity>
-
-            {/* Title */}
-            <Text style={{ fontSize: 18, fontWeight: '700', color: C.t1, marginBottom: 8, marginRight: 28 }}>
-              {t('resonance_paywall_title')}
-            </Text>
-
-            {/* Description */}
-            <Text style={{ fontSize: 13, color: C.t2, lineHeight: 20, marginBottom: 20 }}>
-              {t('resonance_paywall_desc')}
-            </Text>
-
-            {/* Standard plan row */}
-            <View style={{
-              flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-              backgroundColor: C.bs, borderRadius: 12, padding: 14, marginBottom: 10,
-              borderWidth: 1, borderColor: C.bd,
-            }}>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: C.t1, marginBottom: 2 }}>
-                  {t('resonance_paywall_standard')}
-                </Text>
-                <Text style={{ fontSize: 11, color: C.tm }}>
-                  {t('resonance_paywall_standard_desc')}
-                </Text>
-              </View>
-              <Text style={{ fontSize: 14, fontWeight: '700', color: C.p }}>
-                {t('resonance_paywall_standard_price')}
-              </Text>
-            </View>
-
-            {/* Premium plan row */}
-            <View style={{
-              flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-              backgroundColor: C.pp, borderRadius: 12, padding: 14,
-              borderWidth: 1, borderColor: C.bm,
-            }}>
-              <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 2 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: C.t1 }}>
-                    {t('resonance_paywall_premium')}
-                  </Text>
-                  <Ionicons name="water" size={12} color="#FFD700" />
-                </View>
-                <Text style={{ fontSize: 11, color: C.tm }}>
-                  {t('resonance_paywall_premium_desc')}
-                </Text>
-              </View>
-              <Text style={{ fontSize: 14, fontWeight: '700', color: C.p }}>
-                {t('resonance_paywall_premium_price')}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+        onClose={() => setShowPaywall(false)}
+        featureKey="resonance"
+      />
     </SafeAreaView>
   );
 }

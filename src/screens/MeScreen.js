@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Stop, Text as SvgText } from 'react-native-svg';
+import PaywallModal from '../components/PaywallModal';
 import RadarChart from '../components/RadarChart';
 import TraitBar from '../components/TraitBar';
 import UserIcon from '../components/UserIcon';
@@ -39,44 +40,42 @@ function Divider() {
 
 // Locked card (blurred + compact)
 function LockedCard({ icon, label, hint, isDeepAnalysis, userTier, convCount }) {
-  const { colors: C, isDark } = useTheme();
+  const { colors: C } = useTheme();
+  const { t } = useI18n();
   const s = getStyles(C);
+  const [paywallVisible, setPaywallVisible] = useState(false);
 
   let displayHint = hint;
   if (isDeepAnalysis) {
     if (userTier === 'premium') {
-      displayHint = '15回会話で解放';
+      displayHint = t('me_locked_30');
     } else if (userTier === 'standard') {
-      displayHint = '30回会話で解放';
+      displayHint = t('me_locked_30');
     } else {
-      displayHint = '30回会話で解放 または スタンダードへ';
+      displayHint = t('me_locked_hint');
     }
   }
 
   return (
-    <View style={s.lockedCard}>
+    <TouchableOpacity
+      style={s.lockedCard}
+      onPress={() => setPaywallVisible(true)}
+      activeOpacity={0.75}
+    >
       <View style={s.lockedBlur}>
         <Ionicons name={icon} size={20} color={C.t2} />
         <View style={{ flex: 1 }}>
           <Text style={s.lockedLabel}>{label}</Text>
           <Text style={s.lockedHint}>{displayHint}</Text>
-          {isDeepAnalysis && userTier === 'free' ? (
-            <TouchableOpacity
-              onPress={() => Alert.alert(
-                'プランについて',
-                'スタンダード ¥580/月\n・1日50回 + Claude AI分析\n\nプレミアム ¥1,280/月\n・無制限 + 全Claude AI\n・深層分析が15回で解放',
-                [{ text: '閉じる', style: 'cancel' }]
-              )}
-            >
-              <Text style={{ fontSize: 11, color: C.p, marginTop: 4 }}>プランを見る →</Text>
-            </TouchableOpacity>
-          ) : null}
         </View>
-        <View style={s.lockIcon}>
-          <Ionicons name="lock-closed" size={16} color={C.t2} />
-        </View>
+        <Ionicons name="lock-closed" size={16} color={C.t2} />
       </View>
-    </View>
+      <PaywallModal
+        visible={paywallVisible}
+        onClose={() => setPaywallVisible(false)}
+        featureKey="analysis"
+      />
+    </TouchableOpacity>
   );
 }
 
@@ -486,6 +485,7 @@ export default function MeScreen() {
   const [twinConversations, setTwinConversations] = useState([]);
   const [showTwinLog, setShowTwinLog] = useState(false);
   const [userTier, setUserTier] = useState('free');
+  const [paywallVisible2, setPaywallVisible2] = useState(false);
 
   function toggleCard(cardId) {
     setExpandedCards(prev => {
@@ -932,14 +932,15 @@ export default function MeScreen() {
             <Text style={s.upgradeSub}>{t('me_upgrade_desc')}</Text>
             <TouchableOpacity
               style={s.upgradeBtn}
-              onPress={() => Alert.alert(
-                'プランについて',
-                'スタンダード ¥580/月\n・100回/日 + AI人格分析\n\nプレミアム ¥1,280/月\n・200回/日 + 深層分析（15回で解放）',
-                [{ text: '閉じる', style: 'cancel' }]
-              )}
+              onPress={() => setPaywallVisible2(true)}
             >
               <Text style={s.upgradeBtnTxt}>{t('me_upgrade_btn')}</Text>
             </TouchableOpacity>
+            <PaywallModal
+              visible={paywallVisible2}
+              onClose={() => setPaywallVisible2(false)}
+              featureKey="analysis"
+            />
           </View>
         )}
 
