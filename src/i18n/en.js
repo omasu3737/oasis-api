@@ -306,40 +306,43 @@ export default {
   diag_welcome_start: 'Start OASIS',
 
   // Diagnostic Questions (interleaved: Depth/Will/Action/Resonance/Stability per round)
+  // Note: Element type is determined by Action × Resonance, so these two axes
+  // use questions with especially high discriminating power.
+
   // Round 1
-  diag_q1: 'When I become interested in something, I need to research it more deeply than most people',
-  diag_q2: 'Even when others disagree, I tend to prioritize my own judgment',
-  diag_q3: 'When an idea comes to me, I tend to act first and figure things out along the way',
-  diag_q4: 'When a friend is feeling down, my own mood tends to drop as well',
-  diag_q5: 'Even after something unpleasant, I rarely carry it into the next day',
+  diag_q1: 'Once I become interested in something, I cannot stop until I fully understand it',
+  diag_q2: 'Even when others oppose me, I do not change my opinion if I believe I am right',
+  diag_q3: 'My body tends to start moving before I have finished thinking things through',
+  diag_q4: 'When a friend is hurting, I feel a pain in my own chest',
+  diag_q5: 'Even after something unpleasant, sleeping on it usually resets my mood by the next day',
 
   // Round 2
-  diag_q6: 'I cannot stop investigating until I understand the "why" behind something',
-  diag_q7: 'Once I have made up my mind, I stick to my decision regardless of what others say',
-  diag_q8: 'Even without a perfect plan, I prefer to move forward and adjust as I go',
-  diag_q9: 'I have cried while emotionally connecting with a character in a movie or book',
-  diag_q10: 'When my schedule suddenly changes, I am not particularly flustered',
+  diag_q6: 'I want to understand not just the surface of things, but the underlying structure and principles',
+  diag_q7: 'Even if the majority disagrees, I will push through with my own judgment if I am convinced',
+  diag_q8: 'I would rather be doing something than sitting still doing nothing',
+  diag_q9: 'I have felt tears come to my eyes while connecting emotionally with a film or TV character',
+  diag_q10: 'When an unexpected problem arises, I can stay calm without panicking',
 
   // Round 3
-  diag_q11: 'When a topic I love comes up, I lose track of time talking about it',
-  diag_q12: 'Even if people criticize me, I do not change my behavior if I believe I am right',
-  diag_q13: 'I find it more natural to try something first rather than sit and think',
-  diag_q14: 'I feel the joy and happiness of someone close to me as if it were my own',
-  diag_q15: 'The more important a situation is, the calmer I tend to feel',
+  diag_q11: 'I prefer to dig deeply into one field rather than touch many areas broadly',
+  diag_q12: 'Without solid evidence, I do not change my thinking even when criticized or challenged',
+  diag_q13: 'Even without a complete plan, I prefer to move and adjust along the way',
+  diag_q14: 'Even with someone I just met, I can intuitively sense their emotions and mood',
+  diag_q15: 'Emotional swings are rare for me and I tend to stay composed most of the time',
 
   // Round 4
-  diag_q16: 'When watching a drama or film, I tend to look for hidden meaning or the creator\'s intent',
-  diag_q17: 'If I believe something is worthwhile, I can start it on my own even if no one else is doing it',
-  diag_q18: 'Even on an unplanned day off, I naturally find myself doing something',
-  diag_q19: 'Even with strangers, I can often sense their mood or emotions intuitively',
-  diag_q20: 'After making a mistake, I can switch focus to the next action without dwelling on it',
+  diag_q16: 'When something catches my attention, it stays in my head until I find an answer',
+  diag_q17: 'Even without precedent, I can act alone if I believe something has value',
+  diag_q18: 'On an unscheduled day off, I notice I have started doing something without thinking about it',
+  diag_q19: "When someone around me is angry or sad, their emotion seems to transfer to me",
+  diag_q20: 'After a mistake or failure, I can switch to the next action without lingering on it',
 
   // Round 5
-  diag_q21: 'I would rather master one thing completely than explore many things broadly',
-  diag_q22: 'Even if a majority decides something, I feel reluctant to go along with it if I am not convinced',
-  diag_q23: 'I rarely regret that I should have thought things through more before acting',
-  diag_q24: 'People sometimes tell me that I am too considerate of others\' feelings',
-  diag_q25: 'I have little emotional ups and downs and tend to stay calm most of the time',
+  diag_q21: 'I have been told I go too deep or get too absorbed in conversations or tasks',
+  diag_q22: 'My beliefs and values rarely waver even when my environment changes',
+  diag_q23: 'Without thinking about it, I tend to spend my days off in an active way',
+  diag_q24: 'When I see someone struggling, I cannot help but reach out to them',
+  diag_q25: 'Even under strong pressure, I rarely become extremely emotional',
 
   // Settings
   settings_title: 'Settings',
