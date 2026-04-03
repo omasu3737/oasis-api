@@ -296,45 +296,50 @@ export default {
   diag_finish: 'Finish',
   diag_welcome_title: 'Welcome to OASIS',
   diag_welcome_subtitle: 'Your personality type has been determined',
-  diag_your_type: 'Your Type',
+  diag_your_type: 'YOUR TYPE',
   diag_type_suffix: '',
+  diag_element_wind: 'Wind',
+  diag_element_fire: 'Fire',
+  diag_element_water: 'Water',
+  diag_element_earth: 'Earth',
   diag_retake_locked: '※ Retaking the assessment requires a Standard plan or above',
   diag_welcome_start: 'Start OASIS',
 
-  // Diagnostic Questions (Depth)
-  diag_q1: 'I lose track of time when I get absorbed in something',
-  diag_q2: 'I feel compelled to deeply explore the "why" behind things',
-  diag_q3: 'I prefer deep discussions over surface-level conversation',
-  diag_q4: 'I value time for self-reflection and inner exploration',
-  diag_q5: 'I prefer to master one thing deeply rather than many things broadly',
+  // Diagnostic Questions (interleaved: Depth/Will/Action/Resonance/Stability per round)
+  // Round 1
+  diag_q1: 'When I become interested in something, I need to research it more deeply than most people',
+  diag_q2: 'Even when others disagree, I tend to prioritize my own judgment',
+  diag_q3: 'When an idea comes to me, I tend to act first and figure things out along the way',
+  diag_q4: 'When a friend is feeling down, my own mood tends to drop as well',
+  diag_q5: 'Even after something unpleasant, I rarely carry it into the next day',
 
-  // Diagnostic Questions (Will)
-  diag_q6: 'I am confident in my own opinions and judgments',
-  diag_q7: 'I do not hesitate to make decisions even in difficult situations',
-  diag_q8: 'I follow my own path without being swayed by others',
-  diag_q9: 'Once I decide something, I see it through to the end',
-  diag_q10: 'I can make tough choices when working toward a goal',
+  // Round 2
+  diag_q6: 'I cannot stop investigating until I understand the "why" behind something',
+  diag_q7: 'Once I have made up my mind, I stick to my decision regardless of what others say',
+  diag_q8: 'Even without a perfect plan, I prefer to move forward and adjust as I go',
+  diag_q9: 'I have cried while emotionally connecting with a character in a movie or book',
+  diag_q10: 'When my schedule suddenly changes, I am not particularly flustered',
 
-  // Diagnostic Questions (Action)
-  diag_q11: 'I tend to act before thinking things through',
-  diag_q12: 'I enjoy taking on new challenges',
-  diag_q13: 'I prefer doing something over sitting still',
-  diag_q14: 'I quickly put ideas into action',
-  diag_q15: 'People often say I have strong drive and initiative',
+  // Round 3
+  diag_q11: 'When a topic I love comes up, I lose track of time talking about it',
+  diag_q12: 'Even if people criticize me, I do not change my behavior if I believe I am right',
+  diag_q13: 'I find it more natural to try something first rather than sit and think',
+  diag_q14: 'I feel the joy and happiness of someone close to me as if it were my own',
+  diag_q15: 'The more important a situation is, the calmer I tend to feel',
 
-  // Diagnostic Questions (Resonance)
-  diag_q16: 'I am sensitive to other people\'s feelings',
-  diag_q17: 'I find joy in forming deep connections with others',
-  diag_q18: 'I am good at putting myself in other people\'s shoes',
-  diag_q19: 'I feel others\' sadness and happiness as if it were my own',
-  diag_q20: 'I deeply value the bonds I have with people',
+  // Round 4
+  diag_q16: 'When watching a drama or film, I tend to look for hidden meaning or the creator\'s intent',
+  diag_q17: 'If I believe something is worthwhile, I can start it on my own even if no one else is doing it',
+  diag_q18: 'Even on an unplanned day off, I naturally find myself doing something',
+  diag_q19: 'Even with strangers, I can often sense their mood or emotions intuitively',
+  diag_q20: 'After making a mistake, I can switch focus to the next action without dwelling on it',
 
-  // Diagnostic Questions (Stability)
-  diag_q21: 'My emotions are calm and stable',
-  diag_q22: 'I can handle sudden changes with composure',
-  diag_q23: 'I can stay calm even when I feel stressed',
-  diag_q24: 'I recover from emotional setbacks relatively quickly',
-  diag_q25: 'I tend not to be easily swayed by ups and downs',
+  // Round 5
+  diag_q21: 'I would rather master one thing completely than explore many things broadly',
+  diag_q22: 'Even if a majority decides something, I feel reluctant to go along with it if I am not convinced',
+  diag_q23: 'I rarely regret that I should have thought things through more before acting',
+  diag_q24: 'People sometimes tell me that I am too considerate of others\' feelings',
+  diag_q25: 'I have little emotional ups and downs and tend to stay calm most of the time',
 
   // Settings
   settings_title: 'Settings',

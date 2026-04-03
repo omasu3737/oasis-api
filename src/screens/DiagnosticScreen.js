@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Dimensions,
+  ActivityIndicator, Dimensions, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
@@ -10,68 +10,98 @@ import { supabase } from '../supabase';
 
 const { width: SW } = Dimensions.get('window');
 
-// 32タイプマッピング（順: depth will action resonance stability, 1=high/0=low）
+// ============================================================
+// 32タイプマッピング（キー順: depth will action resonance stability）
+// 4元素 × 8サブタイプ = 32タイプ
+// 元素はWill × Resonanceで決まる:
+//   風(Wind) = W高 & R高 / 炎(Fire) = W高 & R低
+//   水(Water) = W低 & R高 / 地(Earth) = W低 & R低
+// ============================================================
 const TYPE_MAP = {
-  '11111': '賢者',
-  '11110': '革命家',
-  '11101': '戦略家',
-  '11100': '先駆者',
-  '11011': '哲学者',
-  '11010': '理想主義者',
-  '11001': '内省者',
-  '11000': '探求者',
-  '10111': '共感者',
-  '10110': '冒険者',
-  '10101': '実践者',
-  '10100': '変革者',
-  '10011': '夢想家',
-  '10010': '感受者',
-  '10001': '熟考者',
-  '10000': '孤高者',
-  '01111': '指導者',
-  '01110': '挑戦者',
-  '01101': '達成者',
-  '01100': '開拓者',
-  '01011': '調停者',
-  '01010': '情熱家',
-  '01001': '規律者',
-  '01000': '信念家',
-  '00111': '社交家',
-  '00110': '表現者',
-  '00101': '実務家',
-  '00100': '自由人',
-  '00011': '調和者',
-  '00010': '共鳴者',
-  '00001': '平和主義者',
-  '00000': '観察者',
+  // 🌬 風型 (W=1, R=1) 意思強×共鳴高 → リーダー・哲学者系
+  '11111': '賢者',        // D高 W高 A高 R高 S高
+  '11110': '革命家',      // D高 W高 A高 R高 S低
+  '11011': '哲学者',      // D高 W高 A低 R高 S高
+  '11010': '理想主義者',  // D高 W高 A低 R高 S低
+  '01111': '指導者',      // D低 W高 A高 R高 S高
+  '01110': '挑戦者',      // D低 W高 A高 R高 S低
+  '01011': '調停者',      // D低 W高 A低 R高 S高
+  '01010': '情熱家',      // D低 W高 A低 R高 S低
+
+  // 🔥 炎型 (W=1, R=0) 意思強×独立系 → 戦略家・開拓者系
+  '11101': '戦略家',      // D高 W高 A高 R低 S高
+  '11100': '先駆者',      // D高 W高 A高 R低 S低
+  '11001': '内省者',      // D高 W高 A低 R低 S高
+  '11000': '探求者',      // D高 W高 A低 R低 S低
+  '01101': '達成者',      // D低 W高 A高 R低 S高
+  '01100': '開拓者',      // D低 W高 A高 R低 S低
+  '01001': '規律者',      // D低 W高 A低 R低 S高
+  '01000': '信念家',      // D低 W高 A低 R低 S低
+
+  // 💧 水型 (W=0, R=1) 柔軟×共鳴高 → 共感者・夢想家系
+  '10111': '共感者',      // D高 W低 A高 R高 S高
+  '10110': '冒険者',      // D高 W低 A高 R高 S低
+  '10011': '夢想家',      // D高 W低 A低 R高 S高
+  '10010': '感受者',      // D高 W低 A低 R高 S低
+  '00111': '社交家',      // D低 W低 A高 R高 S高
+  '00110': '表現者',      // D低 W低 A高 R高 S低
+  '00011': '調和者',      // D低 W低 A低 R高 S高
+  '00010': '共鳴者',      // D低 W低 A低 R高 S低
+
+  // 🌍 地型 (W=0, R=0) 柔軟×独立系 → 実践者・観察者系
+  '10101': '実践者',      // D高 W低 A高 R低 S高
+  '10100': '変革者',      // D高 W低 A高 R低 S低
+  '10001': '熟考者',      // D高 W低 A低 R低 S高
+  '10000': '孤高者',      // D高 W低 A低 R低 S低
+  '00101': '実務家',      // D低 W低 A高 R低 S高
+  '00100': '自由人',      // D低 W低 A高 R低 S低
+  '00001': '平和主義者',  // D低 W低 A低 R低 S高
+  '00000': '観察者',      // D低 W低 A低 R低 S低
 };
 
-// 25問（axis: 0=depth 1=will 2=action 3=resonance 4=stability）
+// 4元素マッピング（Will × Resonance）
+const ELEMENT_MAP = {
+  Wind:  { emoji: '🌬', labelKey: 'diag_element_wind' },
+  Fire:  { emoji: '🔥', labelKey: 'diag_element_fire' },
+  Water: { emoji: '💧', labelKey: 'diag_element_water' },
+  Earth: { emoji: '🌍', labelKey: 'diag_element_earth' },
+};
+
+// ============================================================
+// 25問（5軸 × 5問、インターリーブ配置）
+// 軸の順序をランダムに見せるため、各ラウンドでD→W→A→R→Sの順に出題
+// 同じ軸の問題が連続しないため、回答バイアスを軽減できる
+// ============================================================
 const QUESTIONS = [
-  { axis: 0, key: 'diag_q1' },
-  { axis: 0, key: 'diag_q2' },
-  { axis: 0, key: 'diag_q3' },
-  { axis: 0, key: 'diag_q4' },
-  { axis: 0, key: 'diag_q5' },
-  { axis: 1, key: 'diag_q6' },
+  // Round 1
+  { axis: 0, key: 'diag_q1' },   // 深さ
+  { axis: 1, key: 'diag_q2' },   // 意思
+  { axis: 2, key: 'diag_q3' },   // 行動
+  { axis: 3, key: 'diag_q4' },   // 共鳴
+  { axis: 4, key: 'diag_q5' },   // 安定
+  // Round 2
+  { axis: 0, key: 'diag_q6' },
   { axis: 1, key: 'diag_q7' },
-  { axis: 1, key: 'diag_q8' },
-  { axis: 1, key: 'diag_q9' },
-  { axis: 1, key: 'diag_q10' },
-  { axis: 2, key: 'diag_q11' },
-  { axis: 2, key: 'diag_q12' },
+  { axis: 2, key: 'diag_q8' },
+  { axis: 3, key: 'diag_q9' },
+  { axis: 4, key: 'diag_q10' },
+  // Round 3
+  { axis: 0, key: 'diag_q11' },
+  { axis: 1, key: 'diag_q12' },
   { axis: 2, key: 'diag_q13' },
-  { axis: 2, key: 'diag_q14' },
-  { axis: 2, key: 'diag_q15' },
-  { axis: 3, key: 'diag_q16' },
-  { axis: 3, key: 'diag_q17' },
-  { axis: 3, key: 'diag_q18' },
+  { axis: 3, key: 'diag_q14' },
+  { axis: 4, key: 'diag_q15' },
+  // Round 4
+  { axis: 0, key: 'diag_q16' },
+  { axis: 1, key: 'diag_q17' },
+  { axis: 2, key: 'diag_q18' },
   { axis: 3, key: 'diag_q19' },
-  { axis: 3, key: 'diag_q20' },
-  { axis: 4, key: 'diag_q21' },
-  { axis: 4, key: 'diag_q22' },
-  { axis: 4, key: 'diag_q23' },
-  { axis: 4, key: 'diag_q24' },
+  { axis: 4, key: 'diag_q20' },
+  // Round 5
+  { axis: 0, key: 'diag_q21' },
+  { axis: 1, key: 'diag_q22' },
+  { axis: 2, key: 'diag_q23' },
+  { axis: 3, key: 'diag_q24' },
   { axis: 4, key: 'diag_q25' },
 ];
 
@@ -85,28 +115,41 @@ const AXIS_KEYS = [
 
 const TOTAL = QUESTIONS.length;
 
+// 各軸の5問合計（5〜25）を0〜100スコアに変換
 function calcScores(answers) {
-  // 各軸の5問合計（5〜25）を0〜100に変換
   const sums = [0, 0, 0, 0, 0];
   QUESTIONS.forEach((q, i) => { sums[q.axis] += answers[i]; });
   return sums.map(sum => Math.round((sum - 5) / 20 * 100));
 }
 
+// 5軸スコアから32タイプを判定（各軸50以上=高）
 function determineType(scores) {
   const key = scores.map(s => s >= 50 ? '1' : '0').join('');
-  return TYPE_MAP[key] || '探求者';
+  return TYPE_MAP[key] || '観察者';
 }
 
-// 診断画面
+// Will×Resonanceから4元素を判定
+function determineElement(scores) {
+  const highWill = scores[1] >= 50; // index1 = will
+  const highRes  = scores[3] >= 50; // index3 = resonance
+  if (highWill && highRes)  return 'Wind';
+  if (highWill && !highRes) return 'Fire';
+  if (!highWill && highRes) return 'Water';
+  return 'Earth';
+}
+
+// ============================================================
+// DiagnosticScreen コンポーネント
+// ============================================================
 export default function DiagnosticScreen({ onComplete }) {
-  const { colors: C } = useTheme();
+  const { colors: C, elementColors } = useTheme();
   const { t } = useI18n();
   const s = getStyles(C);
 
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState(Array(TOTAL).fill(null));
   const [saving, setSaving] = useState(false);
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState(null); // { scores, type, element }
 
   const current = answers[step];
 
@@ -114,8 +157,7 @@ export default function DiagnosticScreen({ onComplete }) {
     const next = [...answers];
     next[step] = val;
     setAnswers(next);
-
-    // Q1〜Q24は自動進行
+    // Q1〜Q24は選択後に自動進行（Q25のみ手動で「診断完了」を押す）
     if (step < TOTAL - 1) {
       setTimeout(() => setStep(prev => prev + 1), 250);
     }
@@ -127,7 +169,10 @@ export default function DiagnosticScreen({ onComplete }) {
 
     const scores = calcScores(answers);
     const type = determineType(scores);
-    setResult({ scores, type });
+    const element = determineElement(scores);
+
+    // 結果画面を先に表示（保存は非同期で続行）
+    setResult({ scores, type, element });
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -137,9 +182,9 @@ export default function DiagnosticScreen({ onComplete }) {
 
         await supabase.from('diagnostic_results').upsert({
           user_id: user.id,
-          depth_score: scores[0],
-          will_score: scores[1],
-          action_score: scores[2],
+          depth_score:     scores[0],
+          will_score:      scores[1],
+          action_score:    scores[2],
           resonance_score: scores[3],
           stability_score: scores[4],
           personality_type: type,
@@ -147,32 +192,51 @@ export default function DiagnosticScreen({ onComplete }) {
           completed_at: new Date().toISOString(),
         }, { onConflict: 'user_id' });
 
-        // MeScreenで即時表示できるようusersテーブルも更新
+        // MeScreen・共鳴タブで即時表示できるようusersも更新
         await supabase.from('users')
-          .update({ type_name: type })
+          .update({ type_name: type, element_type: element })
           .eq('id', user.id);
       }
     } catch {
-      // 保存失敗してもウェルカム画面は表示する
+      // 保存失敗してもウェルカム画面は表示する（次回ログイン時に再診断は不可だが許容）
     }
 
     setSaving(false);
   }
 
-  // 結果画面
+  // ── 結果画面 ─────────────────────────────
   if (result) {
+    const el = ELEMENT_MAP[result.element];
+    const elColor = elementColors?.[result.element];
+
     return (
       <SafeAreaView style={s.screen}>
-        <View style={s.resultWrap}>
+        <ScrollView
+          contentContainerStyle={s.resultWrap}
+          showsVerticalScrollIndicator={false}
+        >
           <Text style={s.welcomeTitle}>{t('diag_welcome_title')}</Text>
           <Text style={s.welcomeSub}>{t('diag_welcome_subtitle')}</Text>
 
+          {/* 元素バッジ */}
+          <View style={[s.elementBadge, elColor && {
+            backgroundColor: elColor.bg,
+            borderColor: elColor.border,
+          }]}>
+            <Text style={s.elementEmoji}>{el?.emoji}</Text>
+            <Text style={[s.elementLabel, elColor && { color: elColor.text }]}>
+              {t(el?.labelKey)}
+            </Text>
+          </View>
+
+          {/* タイプ名 */}
           <View style={s.typeBadge}>
-            <Text style={s.typeBadgeLabel}>{t('diag_your_type')}</Text>
+            <Text style={s.typeBadgeHint}>{t('diag_your_type')}</Text>
             <Text style={s.typeName}>{result.type}</Text>
             <Text style={s.typeSuffix}>{t('diag_type_suffix')}</Text>
           </View>
 
+          {/* 5軸スコアバー */}
           <View style={s.scoresWrap}>
             {result.scores.map((score, i) => (
               <View key={i} style={s.scoreRow}>
@@ -185,8 +249,10 @@ export default function DiagnosticScreen({ onComplete }) {
             ))}
           </View>
 
+          {/* 再診断注意 */}
           <Text style={s.retakeNote}>{t('diag_retake_locked')}</Text>
 
+          {/* スタートボタン */}
           <TouchableOpacity
             style={s.startBtn}
             onPress={onComplete}
@@ -196,11 +262,12 @@ export default function DiagnosticScreen({ onComplete }) {
               ? <ActivityIndicator color={C.white} />
               : <Text style={s.startBtnTxt}>{t('diag_welcome_start')}</Text>}
           </TouchableOpacity>
-        </View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
 
+  // ── 設問画面 ─────────────────────────────
   const q = QUESTIONS[step];
   const progressPct = step / TOTAL * 100;
 
@@ -217,7 +284,7 @@ export default function DiagnosticScreen({ onComplete }) {
         <View style={[s.progressFill, { width: `${progressPct}%` }]} />
       </View>
 
-      {/* 軸ラベル */}
+      {/* 軸ラベル（どの側面を測っているかを表示） */}
       <Text style={s.axisLabel}>{t(AXIS_KEYS[q.axis])}</Text>
 
       {/* 問題文 */}
@@ -226,7 +293,7 @@ export default function DiagnosticScreen({ onComplete }) {
         <Text style={s.questionText}>{t(q.key)}</Text>
       </View>
 
-      {/* 5段階ボタン */}
+      {/* 5段階評価ボタン */}
       <View style={s.scaleWrap}>
         <View style={s.scaleRow}>
           {[1, 2, 3, 4, 5].map(val => (
@@ -252,7 +319,10 @@ export default function DiagnosticScreen({ onComplete }) {
       <View style={s.navRow}>
         {step > 0
           ? (
-            <TouchableOpacity style={s.backBtn} onPress={() => setStep(prev => prev - 1)}>
+            <TouchableOpacity
+              style={s.backBtn}
+              onPress={() => setStep(prev => prev - 1)}
+            >
               <Text style={s.backBtnTxt}>{t('diag_back')}</Text>
             </TouchableOpacity>
           )
@@ -285,7 +355,7 @@ export default function DiagnosticScreen({ onComplete }) {
 }
 
 function getStyles(C) {
-  const BTN_SIZE = (SW - 48 - 32) / 5; // 5ボタン均等配置
+  const BTN_SIZE = Math.floor((SW - 48 - 32) / 5);
 
   return StyleSheet.create({
     screen: {
@@ -328,12 +398,12 @@ function getStyles(C) {
 
     // 軸ラベル
     axisLabel: {
-      fontSize: 12,
+      fontSize: 11,
       color: C.p,
-      fontWeight: '600',
+      fontWeight: '700',
       textAlign: 'center',
-      marginTop: 32,
-      letterSpacing: 1,
+      marginTop: 28,
+      letterSpacing: 2,
       textTransform: 'uppercase',
     },
 
@@ -345,17 +415,17 @@ function getStyles(C) {
       paddingHorizontal: 32,
     },
     questionNum: {
-      fontSize: 13,
+      fontSize: 12,
       color: C.tm,
       fontWeight: '600',
-      marginBottom: 16,
+      marginBottom: 20,
     },
     questionText: {
       fontSize: 20,
       color: C.t1,
       fontWeight: '500',
       textAlign: 'center',
-      lineHeight: 30,
+      lineHeight: 32,
     },
 
     // スケールボタン
@@ -383,7 +453,7 @@ function getStyles(C) {
       borderColor: C.p,
     },
     scaleBtnNum: {
-      fontSize: 17,
+      fontSize: 18,
       fontWeight: '600',
       color: C.t2,
     },
@@ -393,7 +463,7 @@ function getStyles(C) {
     scaleLabelRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      marginTop: 8,
+      marginTop: 10,
       paddingHorizontal: 4,
     },
     scaleLabelLeft: {
@@ -408,7 +478,6 @@ function getStyles(C) {
     // ナビゲーション
     navRow: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
       alignItems: 'center',
       paddingHorizontal: 24,
       paddingBottom: 24,
@@ -446,13 +515,12 @@ function getStyles(C) {
       fontWeight: '600',
     },
 
-    // 結果画面
+    // ── 結果画面 ──────────────────────────
     resultWrap: {
-      flex: 1,
       alignItems: 'center',
-      justifyContent: 'center',
       paddingHorizontal: 32,
-      paddingVertical: 24,
+      paddingTop: 32,
+      paddingBottom: 40,
     },
     welcomeTitle: {
       fontSize: 28,
@@ -465,42 +533,66 @@ function getStyles(C) {
       fontSize: 14,
       color: C.tm,
       textAlign: 'center',
-      marginBottom: 32,
+      marginBottom: 24,
     },
+
+    // 元素バッジ
+    elementBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingVertical: 8,
+      paddingHorizontal: 20,
+      borderRadius: 20,
+      borderWidth: 1.5,
+      backgroundColor: C.bs,
+      borderColor: C.bd,
+      marginBottom: 16,
+    },
+    elementEmoji: {
+      fontSize: 20,
+    },
+    elementLabel: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: C.t2,
+    },
+
+    // タイプ名バッジ
     typeBadge: {
       alignItems: 'center',
       backgroundColor: C.pp,
       borderRadius: 24,
       paddingVertical: 24,
       paddingHorizontal: 48,
-      marginBottom: 32,
+      marginBottom: 28,
       borderWidth: 1.5,
       borderColor: C.pm,
     },
-    typeBadgeLabel: {
-      fontSize: 11,
+    typeBadgeHint: {
+      fontSize: 10,
       color: C.p,
-      fontWeight: '600',
-      letterSpacing: 1,
+      fontWeight: '700',
+      letterSpacing: 1.5,
       marginBottom: 8,
     },
     typeName: {
-      fontSize: 32,
+      fontSize: 34,
       fontWeight: '700',
       color: C.p,
     },
     typeSuffix: {
-      fontSize: 16,
+      fontSize: 15,
       color: C.t2,
       fontWeight: '500',
       marginTop: 4,
     },
 
-    // スコアバー
+    // 5軸スコアバー
     scoresWrap: {
       width: '100%',
       gap: 10,
-      marginBottom: 24,
+      marginBottom: 20,
     },
     scoreRow: {
       flexDirection: 'row',
@@ -538,8 +630,9 @@ function getStyles(C) {
       fontSize: 11,
       color: C.tm,
       textAlign: 'center',
-      marginBottom: 24,
-      lineHeight: 16,
+      marginBottom: 20,
+      lineHeight: 17,
+      paddingHorizontal: 8,
     },
 
     // スタートボタン
