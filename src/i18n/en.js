@@ -282,6 +282,60 @@ export default {
   ask_retry: 'Please try again',
   ask_network_error: 'A connection error occurred',
 
+  // Diagnostic Quiz
+  diag_title: 'Self-Assessment',
+  diag_axis_depth: 'Depth',
+  diag_axis_will: 'Will',
+  diag_axis_action: 'Action',
+  diag_axis_resonance: 'Resonance',
+  diag_axis_stability: 'Stability',
+  diag_scale_1: 'Not at all',
+  diag_scale_5: 'Very much',
+  diag_back: 'Back',
+  diag_next: 'Next',
+  diag_finish: 'Finish',
+  diag_welcome_title: 'Welcome to OASIS',
+  diag_welcome_subtitle: 'Your personality type has been determined',
+  diag_your_type: 'Your Type',
+  diag_type_suffix: '',
+  diag_retake_locked: '※ Retaking the assessment requires a Standard plan or above',
+  diag_welcome_start: 'Start OASIS',
+
+  // Diagnostic Questions (Depth)
+  diag_q1: 'I lose track of time when I get absorbed in something',
+  diag_q2: 'I feel compelled to deeply explore the "why" behind things',
+  diag_q3: 'I prefer deep discussions over surface-level conversation',
+  diag_q4: 'I value time for self-reflection and inner exploration',
+  diag_q5: 'I prefer to master one thing deeply rather than many things broadly',
+
+  // Diagnostic Questions (Will)
+  diag_q6: 'I am confident in my own opinions and judgments',
+  diag_q7: 'I do not hesitate to make decisions even in difficult situations',
+  diag_q8: 'I follow my own path without being swayed by others',
+  diag_q9: 'Once I decide something, I see it through to the end',
+  diag_q10: 'I can make tough choices when working toward a goal',
+
+  // Diagnostic Questions (Action)
+  diag_q11: 'I tend to act before thinking things through',
+  diag_q12: 'I enjoy taking on new challenges',
+  diag_q13: 'I prefer doing something over sitting still',
+  diag_q14: 'I quickly put ideas into action',
+  diag_q15: 'People often say I have strong drive and initiative',
+
+  // Diagnostic Questions (Resonance)
+  diag_q16: 'I am sensitive to other people\'s feelings',
+  diag_q17: 'I find joy in forming deep connections with others',
+  diag_q18: 'I am good at putting myself in other people\'s shoes',
+  diag_q19: 'I feel others\' sadness and happiness as if it were my own',
+  diag_q20: 'I deeply value the bonds I have with people',
+
+  // Diagnostic Questions (Stability)
+  diag_q21: 'My emotions are calm and stable',
+  diag_q22: 'I can handle sudden changes with composure',
+  diag_q23: 'I can stay calm even when I feel stressed',
+  diag_q24: 'I recover from emotional setbacks relatively quickly',
+  diag_q25: 'I tend not to be easily swayed by ups and downs',
+
   // Settings
   settings_title: 'Settings',
 

@@ -282,6 +282,60 @@ export default {
   ask_retry: 'もう一度試してください',
   ask_network_error: '通信エラーが発生しました',
 
+  // 選択式診断
+  diag_title: '自己診断',
+  diag_axis_depth: '深さ',
+  diag_axis_will: '意思',
+  diag_axis_action: '行動',
+  diag_axis_resonance: '共鳴',
+  diag_axis_stability: '安定',
+  diag_scale_1: '全く違う',
+  diag_scale_5: 'とても思う',
+  diag_back: '戻る',
+  diag_next: '次へ',
+  diag_finish: '診断完了',
+  diag_welcome_title: 'OASISへようこそ',
+  diag_welcome_subtitle: 'あなたのタイプが判定されました',
+  diag_your_type: 'あなたのタイプ',
+  diag_type_suffix: '型',
+  diag_retake_locked: '※ 再診断はスタンダードプラン以上でご利用いただけます',
+  diag_welcome_start: 'OASISをはじめる',
+
+  // 診断質問（深さ軸）
+  diag_q1: '何かに没頭すると時間を忘れてしまう',
+  diag_q2: '物事の「なぜ？」を深く追求したくなる',
+  diag_q3: '表面的な会話より深い議論を好む',
+  diag_q4: '自分の内面と向き合う時間が大切だ',
+  diag_q5: '一つのことを深く極めたいタイプだ',
+
+  // 診断質問（意思軸）
+  diag_q6: '自分の意見や判断に自信がある',
+  diag_q7: '困難な状況でも決断をためらわない',
+  diag_q8: '他人の意見に流されず自分の道を行く',
+  diag_q9: '一度決めたことは最後までやり通す',
+  diag_q10: '目標のためなら厳しい選択もできる',
+
+  // 診断質問（行動軸）
+  diag_q11: '考えるより先に動いてしまうことが多い',
+  diag_q12: '新しいことへの挑戦が好きだ',
+  diag_q13: 'じっとしているより何かしていたい',
+  diag_q14: 'アイデアをすぐに実行に移すほうだ',
+  diag_q15: '行動力があると言われることが多い',
+
+  // 診断質問（共鳴軸）
+  diag_q16: '他人の気持ちを敏感に感じ取れる',
+  diag_q17: '人と深くつながることに喜びを感じる',
+  diag_q18: '相手の立場になって考えることが得意だ',
+  diag_q19: '誰かの悲しみや喜びを自分のことのように感じる',
+  diag_q20: '人との絆を大切にしている',
+
+  // 診断質問（安定軸）
+  diag_q21: '感情の波が穏やかで安定している',
+  diag_q22: '突然の変化にも落ち着いて対処できる',
+  diag_q23: 'ストレスを感じても冷静さを保てる',
+  diag_q24: '気持ちの切り替えが比較的早い',
+  diag_q25: '物事に一喜一憂しにくいほうだ',
+
   // 設定
   settings_title: '設定',
 
