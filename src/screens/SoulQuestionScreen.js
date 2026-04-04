@@ -67,7 +67,7 @@ export default function SoulQuestionScreen() {
   async function fetchQuestion() {
     const { data } = await supabase
       .from('soul_questions')
-      .select('id, content, answer_count, likes_count, personality_type, created_at, user_id')
+      .select('id, content, answer_count, personality_type, created_at, user_id')
       .eq('id', questionId)
       .single();
     if (!data) return;
@@ -85,7 +85,7 @@ export default function SoulQuestionScreen() {
   async function fetchAnswers(userId) {
     const { data } = await supabase
       .from('soul_answers')
-      .select('id, content, created_at, user_id, likes_count')
+      .select('id, content, created_at, user_id')
       .eq('question_id', questionId)
       .order('created_at', { ascending: false });
 

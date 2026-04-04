@@ -24,7 +24,7 @@ function scoreQuestion(q, currentElement) {
   const hoursSince = (Date.now() - new Date(q.created_at).getTime()) / 3600000;
   const recency = Math.exp(-hoursSince / 72);
   const boost = q.element_type === currentElement ? 1.5 : 1;
-  return ((q.answer_count * 2) + q.likes_count + recency * 5) * boost;
+  return (q.answer_count * 2 + recency * 5) * boost;
 }
 
 function formatRelativeTime(dateStr, t) {
@@ -85,7 +85,7 @@ export default function TalkScreen() {
       // 魂の問答フィード
       const { data: questions } = await supabase
         .from('soul_questions')
-        .select('id, content, answer_count, likes_count, personality_type, created_at, user_id')
+        .select('id, content, answer_count, personality_type, created_at, user_id')
         .order('created_at', { ascending: false })
         .limit(50);
 
