@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Stop, Text as SvgText } from 'react-native-svg';
+import PaywallModal from '../components/PaywallModal';
 import RadarChart from '../components/RadarChart';
 import TraitBar from '../components/TraitBar';
 import UserIcon from '../components/UserIcon';
@@ -37,46 +38,24 @@ function Divider() {
   return <View style={s.divider} />;
 }
 
-// Locked card (blurred + compact)
-function LockedCard({ icon, label, hint, isDeepAnalysis, userTier, convCount }) {
-  const { colors: C, isDark } = useTheme();
+// Locked card (タップで課金モーダルを開く)
+function LockedCard({ icon, label, onPress }) {
+  const { colors: C } = useTheme();
   const s = getStyles(C);
 
-  let displayHint = hint;
-  if (isDeepAnalysis) {
-    if (userTier === 'premium') {
-      displayHint = '15回会話で解放';
-    } else if (userTier === 'standard') {
-      displayHint = '30回会話で解放';
-    } else {
-      displayHint = '30回会話で解放 または スタンダードへ';
-    }
-  }
-
   return (
-    <View style={s.lockedCard}>
+    <TouchableOpacity style={s.lockedCard} onPress={onPress} activeOpacity={0.7}>
       <View style={s.lockedBlur}>
         <Ionicons name={icon} size={20} color={C.t2} />
         <View style={{ flex: 1 }}>
           <Text style={s.lockedLabel}>{label}</Text>
-          <Text style={s.lockedHint}>{displayHint}</Text>
-          {isDeepAnalysis && userTier === 'free' ? (
-            <TouchableOpacity
-              onPress={() => Alert.alert(
-                'プランについて',
-                'スタンダード ¥580/月\n・1日50回 + Claude AI分析\n\nプレミアム ¥1,280/月\n・無制限 + 全Claude AI\n・深層分析が15回で解放',
-                [{ text: '閉じる', style: 'cancel' }]
-              )}
-            >
-              <Text style={{ fontSize: 11, color: C.p, marginTop: 4 }}>プランを見る →</Text>
-            </TouchableOpacity>
-          ) : null}
+          <Text style={s.lockedHint}>スタンダードで解放</Text>
         </View>
         <View style={s.lockIcon}>
           <Ionicons name="lock-closed" size={16} color={C.t2} />
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -102,7 +81,7 @@ function AnalysisCard({ title, mainText, description, tags, icon }) {
 }
 
 // Collapsible card wrapper
-function CollapsibleCard({ cardId, icon, label, themeText, isLocked, hint, isDeepAnalysis, userTier, convCount, expandedCards, toggleCard, children }) {
+function CollapsibleCard({ cardId, icon, label, themeText, isLocked, expandedCards, toggleCard, onPaywallPress, children }) {
   const { colors: C } = useTheme();
   const { t } = useI18n();
   const s = getStyles(C);
@@ -113,10 +92,7 @@ function CollapsibleCard({ cardId, icon, label, themeText, isLocked, hint, isDee
       <LockedCard
         icon={icon}
         label={label}
-        hint={hint}
-        isDeepAnalysis={isDeepAnalysis}
-        userTier={userTier}
-        convCount={convCount}
+        onPress={onPaywallPress}
       />
     );
   }
@@ -486,6 +462,7 @@ export default function MeScreen() {
   const [twinConversations, setTwinConversations] = useState([]);
   const [showTwinLog, setShowTwinLog] = useState(false);
   const [userTier, setUserTier] = useState('free');
+  const [showPaywall, setShowPaywall] = useState(false);
 
   function toggleCard(cardId) {
     setExpandedCards(prev => {
@@ -581,6 +558,7 @@ export default function MeScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
+      <PaywallModal visible={showPaywall} onClose={() => setShowPaywall(false)} />
       <SettingsModal
         visible={showSettings}
         onClose={() => setShowSettings(false)}
@@ -665,18 +643,6 @@ export default function MeScreen() {
           </View>
         ) : null}
 
-        {/* First-time CTA (new users with 0 conversations) */}
-        {!loading && convCount === 0 && !personaData ? (
-          <TouchableOpacity style={s.ctaCard} onPress={() => navigation.navigate('AIChat')}>
-            <Ionicons name="water-outline" size={32} color={C.white} style={{ marginBottom: 8 }} />
-            <Text style={s.ctaTitle}>{t('me_cta_title')}</Text>
-            <Text style={s.ctaSub}>{t('me_cta_desc_long')}</Text>
-            <View style={s.ctaBtn}>
-              <Text style={s.ctaBtnTxt}>{t('me_cta_button')}</Text>
-            </View>
-          </TouchableOpacity>
-        ) : null}
-
         {/* Analysis counter - paid only */}
         {userTier !== 'free' ? (
           <View style={s.counter}>
@@ -702,16 +668,15 @@ export default function MeScreen() {
 
         <Divider />
 
-        {/* Personality Radar + Traits - paid only */}
-        {userTier !== 'free' ? (
+        {/* 人格レーダー・特性スコア（全ユーザー：診断完了後に表示） */}
+        {personaData ? (
           <>
             <CollapsibleCard
               cardId="radar"
               icon="analytics-outline"
               label={t('me_radar')}
               themeText={t('me_analyzed')}
-              isLocked={!personaData}
-              hint={t('me_locked_10')}
+              isLocked={false}
               expandedCards={expandedCards}
               toggleCard={toggleCard}
             >
@@ -723,8 +688,7 @@ export default function MeScreen() {
               icon="bar-chart-outline"
               label={t('me_traits')}
               themeText={t('me_analyzed')}
-              isLocked={!personaData}
-              hint={t('me_locked_10')}
+              isLocked={false}
               expandedCards={expandedCards}
               toggleCard={toggleCard}
             >
@@ -763,41 +727,33 @@ export default function MeScreen() {
           </>
         ) : null}
 
-        {/* Deep analysis - paid only / upgrade CTA for free */}
+        {/* 深層分析（スタンダード以上で解放） */}
         {userTier !== 'free' ? (
           <>
-            {/* Compatibility */}
             <CollapsibleCard
               cardId="compatibility"
               icon="people-outline"
               label={t('me_compatibility')}
               themeText={personaData?.compatibility_text ? personaData.compatibility_text.substring(0, 25) + '…' : undefined}
               isLocked={!personaData?.compatibility_text}
-              hint={t('me_locked_30')}
-              isDeepAnalysis
-              userTier={userTier}
-              convCount={convCount}
               expandedCards={expandedCards}
               toggleCard={toggleCard}
+              onPaywallPress={() => setShowPaywall(true)}
             >
               <View style={s.compatCard}>
                 <Text style={s.compatText}>{personaData?.compatibility_text}</Text>
               </View>
             </CollapsibleCard>
 
-            {/* Value Priorities */}
             <CollapsibleCard
               cardId="values"
               icon="bar-chart-outline"
               label={t('me_values')}
               themeText={personaData?.values_priority?.order || personaData?.values_profile?.core}
               isLocked={!personaData?.values_priority && !personaData?.values_profile}
-              hint={t('me_locked_30')}
-              isDeepAnalysis
-              userTier={userTier}
-              convCount={convCount}
               expandedCards={expandedCards}
               toggleCard={toggleCard}
+              onPaywallPress={() => setShowPaywall(true)}
             >
               {personaData?.values_priority ? (
                 <AnalysisCard
@@ -819,19 +775,15 @@ export default function MeScreen() {
               )}
             </CollapsibleCard>
 
-            {/* Attachment Style */}
             <CollapsibleCard
               cardId="attachment"
               icon="heart-outline"
               label={t('me_attachment')}
               themeText={personaData?.attachment_style?.type}
               isLocked={!personaData?.attachment_style}
-              hint={t('me_locked_30')}
-              isDeepAnalysis
-              userTier={userTier}
-              convCount={convCount}
               expandedCards={expandedCards}
               toggleCard={toggleCard}
+              onPaywallPress={() => setShowPaywall(true)}
             >
               <AnalysisCard
                 mainText={personaData?.attachment_style?.type || ''}
@@ -840,19 +792,15 @@ export default function MeScreen() {
               />
             </CollapsibleCard>
 
-            {/* Stress Response */}
             <CollapsibleCard
               cardId="stress"
               icon="flash-outline"
               label={t('me_stress')}
               themeText={personaData?.stress_response?.pattern}
               isLocked={!personaData?.stress_response}
-              hint={t('me_locked_30')}
-              isDeepAnalysis
-              userTier={userTier}
-              convCount={convCount}
               expandedCards={expandedCards}
               toggleCard={toggleCard}
+              onPaywallPress={() => setShowPaywall(true)}
             >
               <AnalysisCard
                 mainText={personaData?.stress_response?.pattern || ''}
@@ -861,19 +809,15 @@ export default function MeScreen() {
               />
             </CollapsibleCard>
 
-            {/* Energy Source */}
             <CollapsibleCard
               cardId="energy"
               icon="battery-charging-outline"
               label={t('me_energy')}
               themeText={personaData?.energy_source?.recharge ? ('充電: ' + personaData.energy_source.recharge).substring(0, 22) + '…' : undefined}
               isLocked={!personaData?.energy_source}
-              hint={t('me_locked_30')}
-              isDeepAnalysis
-              userTier={userTier}
-              convCount={convCount}
               expandedCards={expandedCards}
               toggleCard={toggleCard}
+              onPaywallPress={() => setShowPaywall(true)}
             >
               <View style={s.analysisCard}>
                 <Text style={s.piLabel}>{t('me_energy_recharge')}</Text>
@@ -883,19 +827,15 @@ export default function MeScreen() {
               </View>
             </CollapsibleCard>
 
-            {/* Thinking Style */}
             <CollapsibleCard
               cardId="thinking"
               icon="bulb-outline"
               label={t('me_thinking')}
               themeText={personaData?.thinking_style?.pattern}
               isLocked={!personaData?.thinking_style}
-              hint={t('me_locked_30')}
-              isDeepAnalysis
-              userTier={userTier}
-              convCount={convCount}
               expandedCards={expandedCards}
               toggleCard={toggleCard}
+              onPaywallPress={() => setShowPaywall(true)}
             >
               <AnalysisCard
                 mainText={personaData?.thinking_style?.pattern || ''}
@@ -906,16 +846,15 @@ export default function MeScreen() {
 
             <Divider />
 
-            {/* Writing Style Profile */}
             <CollapsibleCard
               cardId="style"
               icon="pencil-outline"
               label={t('me_style')}
               themeText={personaData?.style_profile?.tone}
               isLocked={!personaData?.style_profile}
-              hint={t('me_locked_10')}
               expandedCards={expandedCards}
               toggleCard={toggleCard}
+              onPaywallPress={() => setShowPaywall(true)}
             >
               <View style={s.analysisCard}>
                 <Text style={s.piLabel}>{t('me_style_tone')}</Text>
@@ -926,21 +865,30 @@ export default function MeScreen() {
             </CollapsibleCard>
           </>
         ) : (
-          <View style={s.upgradeCard}>
-            <Ionicons name="sparkles" size={28} color={C.p} style={{ marginBottom: 8 }} />
-            <Text style={s.upgradeTitle}>{t('me_upgrade_title')}</Text>
-            <Text style={s.upgradeSub}>{t('me_upgrade_desc')}</Text>
-            <TouchableOpacity
-              style={s.upgradeBtn}
-              onPress={() => Alert.alert(
-                'プランについて',
-                'スタンダード ¥580/月\n・100回/日 + AI人格分析\n\nプレミアム ¥1,280/月\n・200回/日 + 深層分析（15回で解放）',
-                [{ text: '閉じる', style: 'cancel' }]
-              )}
-            >
-              <Text style={s.upgradeBtnTxt}>{t('me_upgrade_btn')}</Text>
-            </TouchableOpacity>
-          </View>
+          // 無料ユーザー：全項目をロックカードで表示
+          <>
+            {[
+              { id: 'compatibility', icon: 'people-outline', label: t('me_compatibility') },
+              { id: 'values', icon: 'bar-chart-outline', label: t('me_values') },
+              { id: 'attachment', icon: 'heart-outline', label: t('me_attachment') },
+              { id: 'stress', icon: 'flash-outline', label: t('me_stress') },
+              { id: 'energy', icon: 'battery-charging-outline', label: t('me_energy') },
+              { id: 'thinking', icon: 'bulb-outline', label: t('me_thinking') },
+            ].map((item) => (
+              <LockedCard
+                key={item.id}
+                icon={item.icon}
+                label={item.label}
+                onPress={() => setShowPaywall(true)}
+              />
+            ))}
+            <Divider />
+            <LockedCard
+              icon="pencil-outline"
+              label={t('me_style')}
+              onPress={() => setShowPaywall(true)}
+            />
+          </>
         )}
 
         {/* Questions for You */}

@@ -6,22 +6,40 @@ if (Platform.OS === 'android') {
 }
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AppNavigator from './src/navigation/AppNavigator';
+import DiagnosticScreen from './src/screens/DiagnosticScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import { getSession, onAuthStateChange } from './src/services/auth';
+import { hasDiagnosticResult } from './src/services/persona';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { I18nProvider } from './src/i18n';
 
 function AppContent() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [hasDiagnostic, setHasDiagnostic] = useState(false);
   const { colors: C, isDark } = useTheme();
 
   useEffect(() => {
-    getSession().then(s => {
+    async function init() {
+      const s = await getSession();
       setSession(s);
+      if (s?.user) {
+        const has = await hasDiagnosticResult(s.user.id);
+        setHasDiagnostic(has);
+      }
       setLoading(false);
+    }
+    init();
+
+    const subscription = onAuthStateChange(async (s) => {
+      setSession(s);
+      if (s?.user) {
+        const has = await hasDiagnosticResult(s.user.id);
+        setHasDiagnostic(has);
+      } else {
+        setHasDiagnostic(false);
+      }
     });
-    const subscription = onAuthStateChange(setSession);
     return () => subscription.unsubscribe();
   }, []);
 
@@ -34,6 +52,15 @@ function AppContent() {
   }
 
   if (!session) return <LoginScreen />;
+
+  if (!hasDiagnostic) {
+    return (
+      <SafeAreaProvider>
+        <StatusBar barStyle={C.statusBar} backgroundColor={C.bg} />
+        <DiagnosticScreen onComplete={() => setHasDiagnostic(true)} />
+      </SafeAreaProvider>
+    );
+  }
 
   return (
     <SafeAreaProvider>
