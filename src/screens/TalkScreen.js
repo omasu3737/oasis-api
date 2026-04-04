@@ -186,6 +186,10 @@ export default function TalkScreen() {
             <Ionicons name="people-outline" size={48} color={C.t3} style={{ marginBottom: 8 }} />
             <Text style={s.emptyTitle}>{t('talk_no_friends')}</Text>
             <Text style={s.emptySub}>{t('talk_no_friends_sub')}</Text>
+            <TouchableOpacity style={s.emptyBtn} onPress={() => setShowAddFriend(true)}>
+              <Ionicons name="person-add-outline" size={14} color={C.white} />
+              <Text style={s.emptyBtnTxt}>{t('talk_add_friend')}</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -384,7 +388,9 @@ function getStyles(C) {
     friendMsg: { fontSize: 12, color: C.tm },
     emptyArea: { paddingVertical: 32, paddingHorizontal: 24, alignItems: 'center' },
     emptyTitle: { fontSize: 13, fontWeight: '500', color: C.t2, marginBottom: 4 },
-    emptySub: { fontSize: 11, color: C.tm, lineHeight: 18, textAlign: 'center' },
+    emptySub: { fontSize: 11, color: C.tm, lineHeight: 18, textAlign: 'center', marginBottom: 16 },
+    emptyBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 20, paddingVertical: 10, backgroundColor: C.p, borderRadius: 20 },
+    emptyBtnTxt: { fontSize: 13, fontWeight: '600', color: C.white },
     // Search
     searchInput: { backgroundColor: C.inputBg, borderWidth: 1, borderColor: C.bd, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10, fontSize: 13, color: C.t1 },
     searchBtn: { paddingHorizontal: 16, paddingVertical: 10, backgroundColor: C.p, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
