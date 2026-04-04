@@ -6,6 +6,7 @@ import {
   Text, TextInput, TouchableOpacity, View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import PaywallModal from '../components/PaywallModal';
 import RadarChart from '../components/RadarChart';
 import TraitBar from '../components/TraitBar';
 import UserIcon from '../components/UserIcon';
@@ -64,6 +65,8 @@ export default function UserProfileScreen() {
   const [qSending, setQSending] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [isTheirPremium, setIsTheirPremium] = useState(false);
+  const [myTier, setMyTier] = useState('free');
+  const [showPaywall, setShowPaywall] = useState(false);
 
   useEffect(() => { loadData(); }, []);
 
@@ -98,14 +101,16 @@ export default function UserProfileScreen() {
         if (myPd) setMyPersona(myPd);
       }
 
-      // 相手のサブスクリプション確認
-      const { data: theirSub } = await supabase
-        .from('subscriptions')
-        .select('tier, expires_at')
-        .eq('user_id', userId)
-        .maybeSingle();
+      // 相手・自分のサブスクリプション確認
+      const [{ data: theirSub }, { data: mySub }] = await Promise.all([
+        supabase.from('subscriptions').select('tier, expires_at').eq('user_id', userId).maybeSingle(),
+        me ? supabase.from('subscriptions').select('tier, expires_at').eq('user_id', me.id).maybeSingle() : { data: null },
+      ]);
       const premiumActive = theirSub && theirSub.tier === 'premium' && (!theirSub.expires_at || new Date(theirSub.expires_at) > new Date());
       setIsTheirPremium(!!premiumActive);
+      if (mySub && (!mySub.expires_at || new Date(mySub.expires_at) > new Date())) {
+        setMyTier(mySub.tier || 'free');
+      }
     } catch (e) {
       console.log('UserProfile loadData error:', e);
     } finally {
@@ -200,10 +205,22 @@ export default function UserProfileScreen() {
 
         <TouchableOpacity
           style={s.askBtn}
-          onPress={() => navigation.navigate('AskAI', { userId, userName: displayName, persona })}
+          onPress={() => {
+            if (myTier === 'free') { setShowPaywall(true); return; }
+            navigation.navigate('AskAI', { userId, userName: displayName, persona });
+          }}
         >
+          {myTier === 'free' && (
+            <Ionicons name="lock-closed" size={13} color={C.white} style={{ marginRight: 4 }} />
+          )}
           <Text style={s.askBtnTxt}>{t('user_ask_ai', { name: displayName })}</Text>
         </TouchableOpacity>
+
+        <PaywallModal
+          visible={showPaywall}
+          onClose={() => setShowPaywall(false)}
+          featureKey="twin"
+        />
 
         <View style={{ flexDirection: 'row', gap: 8, marginHorizontal: 24, marginBottom: 14 }}>
           <TouchableOpacity style={[s.subBtn, { flex: 1 }]} onPress={() => setShowQModal(true)}>
@@ -419,7 +436,7 @@ const getStyles = (C) => StyleSheet.create({
   resonanceCard: { marginHorizontal: 24, marginBottom: 14, borderRadius: 16, padding: 14, backgroundColor: C.pp, borderWidth: 1, borderColor: C.pm },
   resonanceTitle: { fontSize: 10, color: C.p, textTransform: 'uppercase', letterSpacing: 1 },
   resonanceText: { fontSize: 12, color: C.t1, lineHeight: 20 },
-  askBtn: { marginHorizontal: 24, marginBottom: 10, padding: 14, backgroundColor: C.p, borderRadius: 16, alignItems: 'center' },
+  askBtn: { marginHorizontal: 24, marginBottom: 10, padding: 14, backgroundColor: C.p, borderRadius: 16, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' },
   askBtnTxt: { fontSize: 14, fontWeight: '500', color: C.white },
   subBtn: { padding: 12, backgroundColor: C.pp, borderWidth: 1, borderColor: C.bm, borderRadius: 16, alignItems: 'center' },
   subBtnTxt: { fontSize: 13, color: C.p },
