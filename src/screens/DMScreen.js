@@ -12,6 +12,20 @@ import { useTheme } from '../context/ThemeContext';
 import { useI18n } from '../i18n';
 import { getCurrentUser } from '../services/auth';
 import { loadDMs, sendDM } from '../services/dm';
+import { supabase } from '../supabase';
+
+const DM_ANALYZE_URL = 'https://oasis-api-nine.vercel.app/api/dm-analyze';
+
+async function triggerDMAnalysis() {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) return;
+    fetch(DM_ANALYZE_URL, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    }).catch(() => {}); // fire-and-forget
+  } catch { /* silent */ }
+}
 
 export default function DMScreen() {
   const { colors: C } = useTheme();
@@ -55,6 +69,7 @@ export default function DMScreen() {
     setMessages(prev => [...prev, tempMsg]);
 
     await sendDM(currentUser.id, friendId, text);
+    triggerDMAnalysis(); // fire-and-forget: 20通ごとにサーバーが分析実行
     setSending(false);
   }
 
