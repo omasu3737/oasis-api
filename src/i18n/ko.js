@@ -208,6 +208,41 @@ export default {
   resonance_default_user: '사용자',
   resonance_analyzing: '분석 중...',
 
+  // 원소 타입
+  element_fire: '불형',
+  element_water: '물형',
+  element_wind: '바람형',
+  element_earth: '땅형',
+
+  // 영혼의 문답
+  soul_section: '영혼의 문답',
+  soul_post: '올리기',
+  soul_post_title: '질문 올리기',
+  soul_post_placeholder: '마음속의 질문을 적어보세요...',
+  soul_post_submit: '올리기',
+  soul_posting: '올리는 중...',
+  soul_empty: '첫 번째 질문을 올려보세요',
+  soul_empty_sub: '같은 원소 타입의 사람들이\n당신의 질문에 답해줍니다',
+  soul_answers_unit: '개의 답변',
+  soul_answers_title: '답변 목록',
+  soul_no_answers: '아직 답변이 없습니다',
+  soul_be_first: '첫 번째로 답변해보세요',
+  soul_answer_placeholder: '답변을 적어보세요...',
+  soul_already_answered: '이미 답변함',
+  soul_my_answer: '내 답변',
+  soul_different_type_lock: '같은 원소 타입의 사용자만 답변할 수 있습니다',
+  soul_not_found: '질문을 찾을 수 없습니다',
+  soul_no_type_error: '먼저 진단을 완료해주세요',
+
+  // 상대 시간
+  time_just_now: '방금',
+  time_min_ago: '분 전',
+  time_hour_ago: '시간 전',
+  time_day_ago: '일 전',
+
+  // 친구 추가 짧게
+  talk_add_friend_short: '추가',
+
   // 사용자 프로필
   user_ask_ai: '{name}의 AI에게 물어보기',
   user_question: '질문하기',

@@ -6,29 +6,51 @@ import {
   Text, TextInput, TouchableOpacity, View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { FriendItemSkeleton } from '../components/SkeletonCard';
 import UserIcon from '../components/UserIcon';
 import { useTheme } from '../context/ThemeContext';
 import { useI18n } from '../i18n';
 import { getCurrentUser } from '../services/auth';
-import { getLatestDMs } from '../services/dm';
-import { acceptFriendRequest, getFriends, getPendingRequests, rejectFriendRequest, sendFriendRequest } from '../services/friends';
+import {
+  acceptFriendRequest, getFriends, getPendingRequests,
+  rejectFriendRequest, sendFriendRequest,
+} from '../services/friends';
 import { loadProfile } from '../services/profile';
 import { supabase } from '../supabase';
+
+const ELEMENT_COLORS = { Fire: '#E85D3A', Water: '#3B82F6', Wind: '#10B981', Earth: '#8B6914' };
+const ELEMENT_EMOJIS = { Fire: '🔥', Water: '💧', Wind: '🌬', Earth: '🌍' };
+
+function scoreQuestion(q, currentElement) {
+  const hoursSince = (Date.now() - new Date(q.created_at).getTime()) / 3600000;
+  const recency = Math.exp(-hoursSince / 72);
+  const boost = q.element_type === currentElement ? 1.5 : 1;
+  return ((q.answer_count * 2) + q.likes_count + recency * 5) * boost;
+}
+
+function formatRelativeTime(dateStr, t) {
+  const diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
+  if (diff < 60) return t('time_just_now');
+  if (diff < 3600) return `${Math.floor(diff / 60)}${t('time_min_ago')}`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}${t('time_hour_ago')}`;
+  return `${Math.floor(diff / 86400)}${t('time_day_ago')}`;
+}
 
 export default function TalkScreen() {
   const { colors: C } = useTheme();
   const { t } = useI18n();
   const navigation = useNavigation();
-  const [friends, setFriends] = useState([]);
+
+  const [friends, setFriends]             = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
-  const [latestMessages, setLatestMessages] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [showMenu, setShowMenu] = useState(false);
-  const [showRequests, setShowRequests] = useState(false);
-  const [showAddFriend, setShowAddFriend] = useState(false);
+  const [soulQuestions, setSoulQuestions] = useState([]);
   const [currentUserId, setCurrentUserId] = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
+  const [currentElement, setCurrentElement] = useState(null);
+  const [loading, setLoading]             = useState(true);
+  const [showMenu, setShowMenu]           = useState(false);
+  const [showRequests, setShowRequests]   = useState(false);
+  const [showAddFriend, setShowAddFriend] = useState(false);
+  const [showPostQ, setShowPostQ]         = useState(false);
+  const [refreshing, setRefreshing]       = useState(false);
 
   const s = getStyles(C);
 
@@ -38,30 +60,50 @@ export default function TalkScreen() {
       if (!user) return;
       setCurrentUserId(user.id);
 
-      const [friendsList, requests] = await Promise.all([
+      const [friendsList, requests, { data: userData }] = await Promise.all([
         getFriends(user.id),
         getPendingRequests(user.id),
+        supabase.from('users').select('element_type').eq('id', user.id).maybeSingle(),
       ]);
 
-      const friendsWithProfiles = await Promise.all(
-        friendsList.map(async (f) => {
+      const element = userData?.element_type ?? null;
+      setCurrentElement(element);
+
+      const [friendsWithProfiles, requestsWithProfiles] = await Promise.all([
+        Promise.all(friendsList.map(async (f) => {
           const profile = await loadProfile(f.friendId);
           return { ...f, name: profile?.display_name || t('talk_default_user') };
-        })
-      );
-      setFriends(friendsWithProfiles);
-
-      const requestsWithProfiles = await Promise.all(
-        requests.map(async (r) => {
+        })),
+        Promise.all(requests.map(async (r) => {
           const profile = await loadProfile(r.requester_id);
           return { ...r, name: profile?.display_name || t('talk_default_user') };
-        })
-      );
+        })),
+      ]);
+      setFriends(friendsWithProfiles);
       setPendingRequests(requestsWithProfiles);
 
-      if (friendsList.length > 0) {
-        const latest = await getLatestDMs(user.id, friendsList.map(f => f.friendId));
-        setLatestMessages(latest);
+      // 魂の問答フィード
+      const { data: questions } = await supabase
+        .from('soul_questions')
+        .select('id, content, answer_count, likes_count, personality_type, created_at, user_id')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (questions?.length) {
+        const userIds = [...new Set(questions.map(q => q.user_id))];
+        const { data: profiles } = await supabase
+          .from('profiles').select('id, display_name').in('id', userIds);
+        const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p]));
+
+        const enriched = questions.map(q => ({
+          ...q,
+          display_name: profileMap[q.user_id]?.display_name || t('talk_default_user'),
+          element_type: q.personality_type, // personality_type にelement_typeを格納
+        }));
+        enriched.sort((a, b) => scoreQuestion(b, element) - scoreQuestion(a, element));
+        setSoulQuestions(enriched);
+      } else {
+        setSoulQuestions([]);
       }
     } catch (e) {
       console.log('TalkScreen loadData error:', e);
@@ -71,12 +113,9 @@ export default function TalkScreen() {
   }, []);
 
   useEffect(() => { loadData(); }, []);
-
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      loadData();
-    });
-    return unsubscribe;
+    const unsub = navigation.addListener('focus', loadData);
+    return unsub;
   }, [navigation, loadData]);
 
   const onRefresh = useCallback(async () => {
@@ -87,47 +126,30 @@ export default function TalkScreen() {
 
   async function handleAccept(requestId) {
     const ok = await acceptFriendRequest(requestId);
-    if (ok) {
-      setPendingRequests(prev => prev.filter(r => r.id !== requestId));
-      loadData();
-    }
+    if (ok) { setPendingRequests(prev => prev.filter(r => r.id !== requestId)); loadData(); }
   }
-
   async function handleReject(requestId) {
     const ok = await rejectFriendRequest(requestId);
-    if (ok) {
-      setPendingRequests(prev => prev.filter(r => r.id !== requestId));
-    }
-  }
-
-  function formatTime(dateStr) {
-    if (!dateStr) return '';
-    const d = new Date(dateStr);
-    const now = new Date();
-    const diff = now - d;
-    if (diff < 86400000) return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
-    if (diff < 172800000) return t('talk_yesterday');
-    return `${d.getMonth() + 1}/${d.getDate()}`;
+    if (ok) setPendingRequests(prev => prev.filter(r => r.id !== requestId));
   }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
 
+      {/* ヘッダー */}
       <View style={s.header}>
         <Text style={s.title}>{t('tab_talk')}</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          {pendingRequests.length > 0 ? (
+          {pendingRequests.length > 0 && (
             <TouchableOpacity style={s.notifBtn} onPress={() => setShowRequests(true)}>
               <Ionicons name="notifications-outline" size={22} color={C.t1} />
               <View style={s.notifDot}>
                 <Text style={{ fontSize: 8, color: C.white }}>{pendingRequests.length}</Text>
               </View>
             </TouchableOpacity>
-          ) : null}
+          )}
           <TouchableOpacity style={s.menuBtn} onPress={() => setShowMenu(true)}>
-            <View style={s.dot} />
-            <View style={s.dot} />
-            <View style={s.dot} />
+            <View style={s.dot} /><View style={s.dot} /><View style={s.dot} />
           </TouchableOpacity>
         </View>
       </View>
@@ -137,7 +159,6 @@ export default function TalkScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.p} colors={[C.p]} />}
       >
-
         {/* AIチャットカード */}
         <TouchableOpacity style={s.aiCard} onPress={() => navigation.navigate('AIChat')}>
           <View style={s.aiOrb}>
@@ -147,52 +168,110 @@ export default function TalkScreen() {
             <Text style={s.aiName}>{t('talk_ai_name')}</Text>
             <Text style={s.aiSub}>{t('talk_ai_sub')}</Text>
           </View>
-          <View style={s.aiBadge}>
-            <Text style={s.aiBadgeTxt}>AI</Text>
-          </View>
+          <View style={s.aiBadge}><Text style={s.aiBadgeTxt}>AI</Text></View>
         </TouchableOpacity>
 
-        {/* フレンドリスト */}
+        {/* フレンドストーリーバー */}
         <Text style={s.sectionSep}>{t('talk_friends')}</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={s.storyBar}
+          contentContainerStyle={{ paddingHorizontal: 18, paddingVertical: 8, gap: 16 }}
+        >
+          {/* フレンド追加ボタン */}
+          <TouchableOpacity style={s.storyItem} onPress={() => setShowAddFriend(true)}>
+            <View style={[s.storyRing, { borderColor: C.p, borderStyle: 'dashed' }]}>
+              <View style={[s.storyInner, { backgroundColor: C.pp }]}>
+                <Ionicons name="person-add-outline" size={20} color={C.p} />
+              </View>
+            </View>
+            <Text style={s.storyName}>{t('talk_add_friend_short')}</Text>
+          </TouchableOpacity>
 
-        {loading ? (
-          <View>{[1,2,3].map(i => <FriendItemSkeleton key={i} />)}</View>
-        ) : friends.length > 0 ? (
-          friends.map((f) => {
-            const latest = latestMessages[f.friendId];
-            return (
+          {loading ? (
+            [1, 2, 3].map(i => (
+              <View key={i} style={s.storyItem}>
+                <View style={[s.storyRing, { borderColor: C.bd }]}>
+                  <View style={[s.storyInner, { backgroundColor: C.pp }]} />
+                </View>
+                <View style={{ width: 36, height: 8, backgroundColor: C.pp, borderRadius: 4, marginTop: 4 }} />
+              </View>
+            ))
+          ) : (
+            friends.map(f => (
               <TouchableOpacity
                 key={f.friendId}
-                style={s.friendItem}
+                style={s.storyItem}
                 onPress={() => navigation.navigate('DM', { friendId: f.friendId, friendName: f.name })}
               >
-                <TouchableOpacity onPress={() => navigation.navigate('UserProfile', { userId: f.friendId, userName: f.name })}>
-                  <UserIcon name={f.name} size={46} />
-                </TouchableOpacity>
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
-                    <Text style={s.friendName}>{f.name}</Text>
-                    <Text style={s.friendTime}>{formatTime(latest?.created_at)}</Text>
+                <View style={[s.storyRing, { borderColor: C.p }]}>
+                  <View style={s.storyInner}>
+                    <UserIcon name={f.name} size={44} />
                   </View>
-                  <Text style={s.friendMsg} numberOfLines={1}>
-                    {latest?.content || t('talk_no_messages')}
-                  </Text>
+                </View>
+                <Text style={s.storyName} numberOfLines={1}>{f.name}</Text>
+              </TouchableOpacity>
+            ))
+          )}
+        </ScrollView>
+
+        {/* 魂の問答セクション */}
+        <View style={s.soulHeader}>
+          <Text style={s.sectionSep}>{t('soul_section')}</Text>
+          <TouchableOpacity style={s.postBtn} onPress={() => setShowPostQ(true)}>
+            <Ionicons name="add" size={15} color={C.p} />
+            <Text style={s.postBtnTxt}>{t('soul_post')}</Text>
+          </TouchableOpacity>
+        </View>
+
+        {loading ? (
+          <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+            <ActivityIndicator color={C.p} />
+          </View>
+        ) : soulQuestions.length === 0 ? (
+          <View style={s.soulEmpty}>
+            <Text style={{ fontSize: 32, marginBottom: 8 }}>✨</Text>
+            <Text style={s.emptyTitle}>{t('soul_empty')}</Text>
+            <Text style={s.emptySub}>{t('soul_empty_sub')}</Text>
+            <TouchableOpacity style={s.emptyBtn} onPress={() => setShowPostQ(true)}>
+              <Text style={s.emptyBtnTxt}>{t('soul_post')}</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          soulQuestions.map(q => {
+            const elColor = ELEMENT_COLORS[q.element_type] || C.tm;
+            const elEmoji = ELEMENT_EMOJIS[q.element_type] || '';
+            const elKey = (q.element_type || '').toLowerCase();
+            return (
+              <TouchableOpacity
+                key={q.id}
+                style={s.soulCard}
+                onPress={() => navigation.navigate('SoulQuestion', {
+                  questionId: q.id,
+                  currentElement,
+                })}
+                activeOpacity={0.85}
+              >
+                <View style={s.soulCardTop}>
+                  <View style={[s.elBadge, { backgroundColor: elColor + '22' }]}>
+                    <Text style={{ fontSize: 11 }}>{elEmoji}</Text>
+                    <Text style={[s.elBadgeTxt, { color: elColor }]}>{t('element_' + elKey)}</Text>
+                  </View>
+                  <Text style={s.soulTime}>{formatRelativeTime(q.created_at, t)}</Text>
+                </View>
+                <Text style={s.soulUser}>{q.display_name}</Text>
+                <Text style={s.soulContent}>{q.content}</Text>
+                <View style={s.soulFooter}>
+                  <Ionicons name="chatbubble-outline" size={13} color={C.tm} />
+                  <Text style={s.soulAnswerCount}>{q.answer_count}{t('soul_answers_unit')}</Text>
                 </View>
               </TouchableOpacity>
             );
           })
-        ) : (
-          <View style={s.emptyArea}>
-            <Ionicons name="people-outline" size={48} color={C.t3} style={{ marginBottom: 8 }} />
-            <Text style={s.emptyTitle}>{t('talk_no_friends')}</Text>
-            <Text style={s.emptySub}>{t('talk_no_friends_sub')}</Text>
-            <TouchableOpacity style={s.emptyBtn} onPress={() => setShowAddFriend(true)}>
-              <Ionicons name="person-add-outline" size={14} color={C.white} />
-              <Text style={s.emptyBtnTxt}>{t('talk_add_friend')}</Text>
-            </TouchableOpacity>
-          </View>
         )}
 
+        <View style={{ height: 24 }} />
       </ScrollView>
 
       {/* メニューモーダル */}
@@ -203,17 +282,16 @@ export default function TalkScreen() {
             <Text style={s.modalTitle}>{t('talk_menu')}</Text>
             <TouchableOpacity style={s.modalItem} onPress={() => { setShowMenu(false); setTimeout(() => setShowAddFriend(true), 300); }}>
               <View style={s.modalIcon}><Ionicons name="person-add-outline" size={18} color={C.t2} /></View>
-              <View><Text style={s.modalLabel}>{t('talk_add_friend')}</Text><Text style={s.modalSub}>{t('talk_add_friend_sub')}</Text></View>
-            </TouchableOpacity>
-            <TouchableOpacity style={s.modalItem} onPress={() => { setShowMenu(false); /* TODO: group */ }}>
-              <View style={s.modalIcon}><Ionicons name="people-outline" size={18} color={C.t2} /></View>
-              <View><Text style={s.modalLabel}>{t('talk_create_group')}</Text><Text style={s.modalSub}>{t('talk_create_group_sub')}</Text></View>
+              <View>
+                <Text style={s.modalLabel}>{t('talk_add_friend')}</Text>
+                <Text style={s.modalSub}>{t('talk_add_friend_sub')}</Text>
+              </View>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
       </Modal>
 
-      {/* フレンドリクエスト通知モーダル */}
+      {/* フレンドリクエスト通知 */}
       <Modal transparent visible={showRequests} animationType="fade" onRequestClose={() => setShowRequests(false)}>
         <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setShowRequests(false)}>
           <View style={s.modalContent}>
@@ -236,30 +314,36 @@ export default function TalkScreen() {
                 </View>
               </View>
             ))}
-            {pendingRequests.length === 0 ? (
+            {pendingRequests.length === 0 && (
               <Text style={{ fontSize: 12, color: C.tm, textAlign: 'center', paddingVertical: 16 }}>
                 {t('talk_no_requests')}
               </Text>
-            ) : null}
+            )}
           </View>
         </TouchableOpacity>
       </Modal>
 
-      {/* フレンド追加モーダル */}
       <AddFriendModal
         visible={showAddFriend}
         onClose={() => setShowAddFriend(false)}
         currentUserId={currentUserId}
         onRequestSent={loadData}
-        C={C}
-        t={t}
-        s={s}
+        C={C} t={t} s={s}
       />
 
+      <PostQuestionModal
+        visible={showPostQ}
+        onClose={() => setShowPostQ(false)}
+        currentUserId={currentUserId}
+        currentElement={currentElement}
+        onPosted={() => { setShowPostQ(false); loadData(); }}
+        C={C} t={t} s={s}
+      />
     </SafeAreaView>
   );
 }
 
+// ────────── フレンド追加モーダル ──────────
 function AddFriendModal({ visible, onClose, currentUserId, onRequestSent, C, t, s }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
@@ -277,29 +361,16 @@ function AddFriendModal({ visible, onClose, currentUserId, onRequestSent, C, t, 
         .neq('id', currentUserId)
         .limit(10);
       setResults(data || []);
-    } catch (e) {
-      setResults([]);
-    } finally {
-      setSearching(false);
-    }
+    } catch { setResults([]); } finally { setSearching(false); }
   }
 
   async function handleSendRequest(userId) {
     const ok = await sendFriendRequest(currentUserId, userId);
-    if (ok) {
-      setSentIds(prev => [...prev, userId]);
-      onRequestSent();
-    } else {
-      Alert.alert(t('error'), t('user_send_failed'));
-    }
+    if (ok) { setSentIds(prev => [...prev, userId]); onRequestSent(); }
+    else Alert.alert(t('error'), t('user_send_failed'));
   }
 
-  function handleClose() {
-    setQuery('');
-    setResults([]);
-    setSentIds([]);
-    onClose();
-  }
+  function handleClose() { setQuery(''); setResults([]); setSentIds([]); onClose(); }
 
   return (
     <Modal transparent visible={visible} animationType="slide" onRequestClose={handleClose}>
@@ -307,8 +378,6 @@ function AddFriendModal({ visible, onClose, currentUserId, onRequestSent, C, t, 
         <View style={[s.modalContent, { maxHeight: '75%' }]} onStartShouldSetResponder={() => true}>
           <View style={s.mhandle} />
           <Text style={s.modalTitle}>{t('talk_add_friend')}</Text>
-
-          {/* 検索バー */}
           <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
             <TextInput
               style={[s.searchInput, { flex: 1 }]}
@@ -325,8 +394,6 @@ function AddFriendModal({ visible, onClose, currentUserId, onRequestSent, C, t, 
               <Text style={{ fontSize: 13, fontWeight: '600', color: C.white }}>{t('search')}</Text>
             </TouchableOpacity>
           </View>
-
-          {/* 結果 */}
           <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 320 }}>
             {searching ? (
               <View style={{ alignItems: 'center', paddingVertical: 20 }}>
@@ -367,6 +434,63 @@ function AddFriendModal({ visible, onClose, currentUserId, onRequestSent, C, t, 
   );
 }
 
+// ────────── 魂の問答投稿モーダル ──────────
+function PostQuestionModal({ visible, onClose, currentUserId, currentElement, onPosted, C, t, s }) {
+  const [text, setText] = useState('');
+  const [posting, setPosting] = useState(false);
+
+  async function handlePost() {
+    if (!text.trim() || posting) return;
+    if (!currentElement) {
+      Alert.alert(t('error'), t('soul_no_type_error'));
+      return;
+    }
+    setPosting(true);
+    try {
+      const { error } = await supabase.from('soul_questions').insert({
+        user_id: currentUserId,
+        personality_type: currentElement, // element_typeを格納
+        content: text.trim(),
+      });
+      if (!error) { setText(''); onPosted(); }
+    } finally { setPosting(false); }
+  }
+
+  function handleClose() { setText(''); onClose(); }
+
+  return (
+    <Modal transparent visible={visible} animationType="slide" onRequestClose={handleClose}>
+      <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={handleClose}>
+        <View style={[s.modalContent, { paddingBottom: 40 }]} onStartShouldSetResponder={() => true}>
+          <View style={s.mhandle} />
+          <Text style={s.modalTitle}>{t('soul_post_title')}</Text>
+          <TextInput
+            style={s.postInput}
+            placeholder={t('soul_post_placeholder')}
+            placeholderTextColor={C.tm}
+            value={text}
+            onChangeText={setText}
+            multiline
+            maxLength={300}
+            autoFocus
+          />
+          <Text style={{ fontSize: 11, color: C.tm, textAlign: 'right', marginBottom: 12 }}>
+            {text.length}/300
+          </Text>
+          <TouchableOpacity
+            style={[s.ctaBtn, (!text.trim() || posting) && { opacity: 0.5 }]}
+            onPress={handlePost}
+            disabled={!text.trim() || posting}
+          >
+            <Text style={s.ctaBtnTxt}>{posting ? t('soul_posting') : t('soul_post_submit')}</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
+// ────────── スタイル ──────────
 function getStyles(C) {
   return StyleSheet.create({
     header: { paddingHorizontal: 24, paddingTop: 18, paddingBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
@@ -375,26 +499,45 @@ function getStyles(C) {
     dot: { width: 4, height: 4, borderRadius: 2, backgroundColor: C.p },
     notifBtn: { width: 34, height: 34, borderRadius: 11, backgroundColor: C.pp, alignItems: 'center', justifyContent: 'center', position: 'relative' },
     notifDot: { position: 'absolute', top: -2, right: -2, width: 16, height: 16, borderRadius: 8, backgroundColor: C.err, alignItems: 'center', justifyContent: 'center' },
+
     aiCard: { marginHorizontal: 18, marginBottom: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.bm, borderRadius: 18, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
     aiOrb: { width: 50, height: 50, borderRadius: 25, backgroundColor: C.pp, borderWidth: 2, borderColor: C.bm, alignItems: 'center', justifyContent: 'center' },
     aiName: { fontSize: 15, fontWeight: '500', color: C.t1 },
     aiSub: { fontSize: 11, color: C.tm, marginTop: 2 },
     aiBadge: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 10, backgroundColor: C.p },
     aiBadgeTxt: { fontSize: 10, color: C.white },
+
     sectionSep: { paddingHorizontal: 24, paddingVertical: 6, fontSize: 10, color: C.tm, textTransform: 'uppercase', letterSpacing: 1 },
-    friendItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 18, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: C.bd },
-    friendName: { fontSize: 14, fontWeight: '500', color: C.t1 },
-    friendTime: { fontSize: 11, color: C.tm },
-    friendMsg: { fontSize: 12, color: C.tm },
-    emptyArea: { paddingVertical: 32, paddingHorizontal: 24, alignItems: 'center' },
-    emptyTitle: { fontSize: 13, fontWeight: '500', color: C.t2, marginBottom: 4 },
-    emptySub: { fontSize: 11, color: C.tm, lineHeight: 18, textAlign: 'center', marginBottom: 16 },
-    emptyBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 20, paddingVertical: 10, backgroundColor: C.p, borderRadius: 20 },
+
+    // フレンドストーリーバー
+    storyBar: { marginBottom: 4 },
+    storyItem: { alignItems: 'center', width: 62 },
+    storyRing: { width: 56, height: 56, borderRadius: 28, borderWidth: 2, padding: 2, marginBottom: 4 },
+    storyInner: { flex: 1, borderRadius: 24, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+    storyName: { fontSize: 10, color: C.t2, textAlign: 'center', maxWidth: 58 },
+
+    // 魂の問答
+    soulHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingRight: 18 },
+    postBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 14, borderWidth: 1, borderColor: C.p },
+    postBtnTxt: { fontSize: 12, color: C.p, fontWeight: '600' },
+
+    soulCard: { marginHorizontal: 18, marginBottom: 10, backgroundColor: C.card, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: C.bd },
+    soulCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+    elBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+    elBadgeTxt: { fontSize: 11, fontWeight: '600' },
+    soulTime: { fontSize: 11, color: C.tm },
+    soulUser: { fontSize: 12, color: C.t2, marginBottom: 6 },
+    soulContent: { fontSize: 15, color: C.t1, lineHeight: 22, fontWeight: '500', marginBottom: 10 },
+    soulFooter: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+    soulAnswerCount: { fontSize: 12, color: C.tm },
+
+    soulEmpty: { paddingVertical: 32, paddingHorizontal: 24, alignItems: 'center' },
+    emptyTitle: { fontSize: 14, fontWeight: '600', color: C.t2, marginBottom: 6 },
+    emptySub: { fontSize: 12, color: C.tm, lineHeight: 18, textAlign: 'center', marginBottom: 16 },
+    emptyBtn: { paddingHorizontal: 20, paddingVertical: 10, backgroundColor: C.p, borderRadius: 20 },
     emptyBtnTxt: { fontSize: 13, fontWeight: '600', color: C.white },
-    // Search
-    searchInput: { backgroundColor: C.inputBg, borderWidth: 1, borderColor: C.bd, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10, fontSize: 13, color: C.t1 },
-    searchBtn: { paddingHorizontal: 16, paddingVertical: 10, backgroundColor: C.p, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-    // Modal
+
+    // モーダル共通
     modalOverlay: { flex: 1, backgroundColor: C.overlay, justifyContent: 'flex-end' },
     modalContent: { backgroundColor: C.card, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40 },
     mhandle: { width: 36, height: 4, backgroundColor: C.bm, borderRadius: 2, alignSelf: 'center', marginBottom: 18 },
@@ -405,6 +548,15 @@ function getStyles(C) {
     modalSub: { fontSize: 11, color: C.tm },
     reqItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
     acceptBtn: { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: C.p, borderRadius: 10 },
-    rejectBtn: { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: 'transparent', borderWidth: 1, borderColor: C.bm, borderRadius: 10 },
+    rejectBtn: { paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: C.bm, borderRadius: 10 },
+
+    // 投稿モーダル
+    postInput: { backgroundColor: C.inputBg, borderWidth: 1, borderColor: C.bd, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: C.t1, minHeight: 100, textAlignVertical: 'top', marginBottom: 6 },
+    ctaBtn: { backgroundColor: C.p, borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
+    ctaBtnTxt: { fontSize: 15, fontWeight: '700', color: C.white },
+
+    // フレンド追加検索
+    searchInput: { backgroundColor: C.inputBg, borderWidth: 1, borderColor: C.bd, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10, fontSize: 13, color: C.t1 },
+    searchBtn: { paddingHorizontal: 16, paddingVertical: 10, backgroundColor: C.p, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   });
 }

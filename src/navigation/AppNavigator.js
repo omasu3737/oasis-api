@@ -6,6 +6,7 @@ import Svg, { Circle, Line, Path } from 'react-native-svg';
 import AIChatScreen from '../screens/AIChatScreen';
 import AskAIScreen from '../screens/AskAIScreen';
 import DMScreen from '../screens/DMScreen';
+import SoulQuestionScreen from '../screens/SoulQuestionScreen';
 import MeScreen from '../screens/MeScreen';
 import ResonanceScreen from '../screens/ResonanceScreen';
 import TalkScreen from '../screens/TalkScreen';
@@ -126,6 +127,11 @@ export default function AppNavigator() {
         <Stack.Screen
           name="Terms"
           component={TermsScreen}
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="SoulQuestion"
+          component={SoulQuestionScreen}
           options={{ animation: 'slide_from_right' }}
         />
       </Stack.Navigator>

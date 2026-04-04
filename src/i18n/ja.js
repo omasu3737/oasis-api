@@ -211,6 +211,41 @@ export default {
   resonance_default_user: 'ユーザー',
   resonance_analyzing: '分析中...',
 
+  // 元素タイプ
+  element_fire: '火型',
+  element_water: '水型',
+  element_wind: '風型',
+  element_earth: '土型',
+
+  // 魂の問答
+  soul_section: '魂の問答',
+  soul_post: '投稿する',
+  soul_post_title: '問いを投稿する',
+  soul_post_placeholder: '心に浮かんだ問いを書いてください...',
+  soul_post_submit: '投稿',
+  soul_posting: '投稿中...',
+  soul_empty: '最初の問いを投稿しよう',
+  soul_empty_sub: '同じ元素タイプの仲間があなたの\n問いに答えてくれます',
+  soul_answers_unit: '件の回答',
+  soul_answers_title: '回答一覧',
+  soul_no_answers: 'まだ回答がありません',
+  soul_be_first: '最初に回答してみましょう',
+  soul_answer_placeholder: 'あなたの答えを書いてください...',
+  soul_already_answered: '回答済み',
+  soul_my_answer: 'あなたの回答',
+  soul_different_type_lock: '同じ元素タイプのユーザーのみ回答できます',
+  soul_not_found: '問いが見つかりません',
+  soul_no_type_error: '診断を完了してから投稿してください',
+
+  // 相対時刻
+  time_just_now: 'たった今',
+  time_min_ago: '分前',
+  time_hour_ago: '時間前',
+  time_day_ago: '日前',
+
+  // フレンド追加ショート
+  talk_add_friend_short: '追加',
+
   // ユーザープロフィール
   user_ask_ai: '{name} の AI に聞いてみる',
   user_question: '質問する',

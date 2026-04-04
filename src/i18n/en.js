@@ -211,6 +211,41 @@ export default {
   resonance_default_user: 'User',
   resonance_analyzing: 'Analyzing...',
 
+  // Element types
+  element_fire: 'Fire',
+  element_water: 'Water',
+  element_wind: 'Wind',
+  element_earth: 'Earth',
+
+  // Soul Q&A
+  soul_section: 'Soul Q&A',
+  soul_post: 'Post',
+  soul_post_title: 'Post a Question',
+  soul_post_placeholder: 'Write a question on your mind...',
+  soul_post_submit: 'Post',
+  soul_posting: 'Posting...',
+  soul_empty: 'Post the first question',
+  soul_empty_sub: 'Others with the same element type\nwill answer your question',
+  soul_answers_unit: ' answers',
+  soul_answers_title: 'Answers',
+  soul_no_answers: 'No answers yet',
+  soul_be_first: 'Be the first to answer',
+  soul_answer_placeholder: 'Write your answer...',
+  soul_already_answered: 'Already answered',
+  soul_my_answer: 'Your answer',
+  soul_different_type_lock: 'Only users with the same element type can answer',
+  soul_not_found: 'Question not found',
+  soul_no_type_error: 'Please complete the diagnosis first',
+
+  // Relative time
+  time_just_now: 'Just now',
+  time_min_ago: 'm ago',
+  time_hour_ago: 'h ago',
+  time_day_ago: 'd ago',
+
+  // Friend add short
+  talk_add_friend_short: 'Add',
+
   // User Profile
   user_ask_ai: 'Ask {name}\'s AI',
   user_question: 'Ask Question',
