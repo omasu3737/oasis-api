@@ -357,7 +357,7 @@ export default function UserProfileScreen() {
                 );
               }}
             >
-              <Ionicons name="close-circle-outline" size={18} color={C.red || '#ef4444'} />
+              <Ionicons name="close-circle-outline" size={18} color={C.err} />
               <Text style={s.moreItemTxt}>{t('user_block_action')}</Text>
             </TouchableOpacity>
             <TouchableOpacity

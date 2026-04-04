@@ -125,7 +125,7 @@ export default function DMScreen() {
             returnKeyType="send"
           />
           <TouchableOpacity style={s.sendBtn} onPress={handleSend}>
-            <Ionicons name="arrow-up" size={20} color={'#fff'} />
+            <Ionicons name="arrow-up" size={20} color={C.white} />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

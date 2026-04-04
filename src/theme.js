@@ -20,6 +20,7 @@ export const lightTheme = {
   statusBar: 'dark-content',
   white: '#ffffff',
   err: '#e05050',
+  t3: '#c8c0d8',   // text faint (empty states, disabled icons)
 };
 
 // ダークテーマ（洗練された深い紫黒 - Instagram/Discord/Spotify参考）
@@ -42,6 +43,7 @@ export const darkTheme = {
   statusBar: 'light-content',
   white: '#ffffff',
   err: '#ff6b6b',
+  t3: '#4a4565',   // text faint (empty states, disabled icons)
 };
 
 // エレメントカラー（ライト）

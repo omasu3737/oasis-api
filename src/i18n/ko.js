@@ -40,6 +40,7 @@ export default {
   login_reset_empty: '이메일 주소를 입력해주세요',
   login_reset_sent: '비밀번호 재설정 이메일을 전송했습니다. 이메일을 확인해주세요',
   login_reset_failed: '전송에 실패했습니다. 이메일 주소를 확인해주세요',
+  login_registration_blocked: '현재 신규 등록을 일시 중단하고 있습니다. 잠시 후 다시 시도해주세요',
 
   // 나 탭
   me_settings: '설정',
@@ -106,6 +107,7 @@ export default {
   me_qa_empty_title: '아직 질문이 없습니다',
   me_qa_empty_hint: '다른 사용자가 내 프로필을 보고\n질문을 보내면 여기에 표시됩니다',
   me_qa_submit: '답변하기',
+  me_qa_submit_full: '답변을 완료하고 성격에 반영하기',
   me_share: '공유',
   me_share_msg: 'OASIS에서 AI와 대화하며 나의 성격을 분석해보세요!\nhttps://play.google.com/store/apps/details?id=com.omasu.oasis',
   me_preview: '미리보기',
